@@ -5,9 +5,10 @@ inventário da dispensa e do frigorífico em casa.
 
 ## Funcionalidades
 
-- Leitura de código de barras pela câmara do telemóvel (`BarcodeDetector` API —
-  suportado em Chrome/Android; noutros browsers cai automaticamente para
-  introdução manual do código).
+- Leitura de código de barras pela câmara do telemóvel, via
+  [`html5-qrcode`](https://github.com/mebjas/html5-qrcode) (carregada por CDN) —
+  funciona em qualquer browser moderno, incluindo Safari/iOS, desde que servido
+  por HTTPS. Se a câmara não estiver disponível, cai para introdução manual.
 - Consulta automática do nome e imagem do produto na
   [Open Food Facts](https://world.openfoodfacts.org/) a partir do código de barras.
 - Inventário separado por **Dispensa** e **Frigorífico**, com contador de
@@ -25,8 +26,11 @@ ecrã principal como PWA-like shortcut.
 
 ## Limitações atuais
 
-- `BarcodeDetector` não é suportado no Safari/iOS — nesse caso, introduz o
-  código de barras manualmente (o campo de nome pode sempre ser preenchido à mão).
+- A leitura de código de barras exige **HTTPS** (ex. GitHub Pages) — não
+  funciona a abrir o `index.html` localmente (`file://`) nem por `http://`
+  simples, porque o Safari/iOS bloqueia o acesso à câmara fora de um
+  contexto seguro. Nesses casos, o código pode sempre ser introduzido
+  manualmente.
 - Sem sincronização entre dispositivos — o inventário fica guardado apenas no
   browser onde foi criado.
 - Sem datas de validade (ainda).

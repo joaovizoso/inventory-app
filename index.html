@@ -252,7 +252,7 @@
     margin-bottom: 14px;
     background: black;
   }
-  #scanner-video {
+  #scanner-video-container video {
     width: 100%;
     display: block;
     max-height: 260px;
@@ -311,7 +311,7 @@
     <button class="btn btn-scan" id="scan-btn">📷 Ler código de barras</button>
     <div class="scan-status" id="scan-status"></div>
     <div id="scanner-wrap">
-      <video id="scanner-video" muted playsinline autoplay></video>
+      <div id="scanner-video-container"></div>
       <div id="scanner-frame"></div>
     </div>
 
@@ -350,6 +350,7 @@
 
 <div class="toast" id="toast"></div>
 
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 <script>
 (function () {
   "use strict";
@@ -357,9 +358,8 @@
   var STORAGE_KEY = "inventario_items_v1";
   var currentLoc = "dispensa";
   var editingId = null;
-  var scanStream = null;
-  var scanRAF = null;
-  var barcodeDetector = null;
+  var html5QrCode = null;
+  var scannerRunning = false;
 
   function loadItems() {
     try {
@@ -566,73 +566,70 @@
     closeSheet();
   };
 
-  // Barcode scanning
-  function scannerSupported() {
-    return "BarcodeDetector" in window;
-  }
-
+  // Barcode scanning — via html5-qrcode (decoding em JS puro, funciona em
+  // qualquer browser incluindo Safari/iOS; requer HTTPS e permissão da câmara).
   function stopScanner() {
-    if (scanRAF) cancelAnimationFrame(scanRAF);
-    scanRAF = null;
-    if (scanStream) {
-      scanStream.getTracks().forEach(function (t) { t.stop(); });
-      scanStream = null;
-    }
     document.getElementById("scanner-wrap").style.display = "none";
+    if (html5QrCode && scannerRunning) {
+      scannerRunning = false;
+      html5QrCode.stop().catch(function (err) {
+        console.error("Erro a parar a câmara", err);
+      });
+    }
   }
 
   async function startScanner() {
     var statusEl = document.getElementById("scan-status");
 
-    if (!scannerSupported()) {
-      statusEl.textContent = "Leitura automática não suportada neste navegador — introduz o código manualmente.";
+    if (!window.isSecureContext) {
+      statusEl.textContent = "A câmara só funciona em ligação HTTPS — introduz o código manualmente.";
       return;
     }
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-      statusEl.textContent = "Câmara não disponível — introduz o código manualmente.";
+      statusEl.textContent = "Câmara não disponível neste navegador — introduz o código manualmente.";
+      return;
+    }
+    if (typeof Html5Qrcode === "undefined") {
+      statusEl.textContent = "Leitor de código de barras não carregou — verifica a ligação à internet ou introduz o código manualmente.";
       return;
     }
 
     try {
-      if (!barcodeDetector) {
-        barcodeDetector = new BarcodeDetector({
-          formats: ["ean_13", "ean_8", "upc_a", "upc_e", "code_128", "code_39", "qr_code"]
+      if (!html5QrCode) {
+        html5QrCode = new Html5Qrcode("scanner-video-container", {
+          formatsToSupport: [
+            Html5QrcodeSupportedFormats.EAN_13,
+            Html5QrcodeSupportedFormats.EAN_8,
+            Html5QrcodeSupportedFormats.UPC_A,
+            Html5QrcodeSupportedFormats.UPC_E,
+            Html5QrcodeSupportedFormats.CODE_128,
+            Html5QrcodeSupportedFormats.CODE_39,
+            Html5QrcodeSupportedFormats.QR_CODE
+          ],
+          verbose: false
         });
       }
-      scanStream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: "environment" }
-      });
-      var video = document.getElementById("scanner-video");
-      video.srcObject = scanStream;
+
       document.getElementById("scanner-wrap").style.display = "block";
       statusEl.textContent = "Aponta a câmara para o código de barras...";
-      await video.play();
-      scanLoop(video, statusEl);
+
+      await html5QrCode.start(
+        { facingMode: "environment" },
+        { fps: 10, qrbox: { width: 260, height: 140 } },
+        function (decodedText) { onBarcodeDetected(decodedText, statusEl); },
+        function () { /* nenhum código detetado neste frame — ignora e continua */ }
+      );
+      scannerRunning = true;
     } catch (err) {
       console.error(err);
-      statusEl.textContent = "Não foi possível aceder à câmara — introduz o código manualmente.";
-      stopScanner();
+      statusEl.textContent = "Não foi possível aceder à câmara — verifica as permissões ou introduz o código manualmente.";
+      document.getElementById("scanner-wrap").style.display = "none";
     }
   }
 
-  function scanLoop(video, statusEl) {
-    barcodeDetector.detect(video)
-      .then(function (codes) {
-        if (codes && codes.length > 0) {
-          onBarcodeDetected(codes[0].rawValue, statusEl);
-          return;
-        }
-        scanRAF = requestAnimationFrame(function () { scanLoop(video, statusEl); });
-      })
-      .catch(function (err) {
-        console.error("Erro na deteção", err);
-        scanRAF = requestAnimationFrame(function () { scanLoop(video, statusEl); });
-      });
-  }
-
   function onBarcodeDetected(code, statusEl) {
-    document.getElementById("f-barcode").value = code;
     stopScanner();
+    document.getElementById("f-barcode").value = code;
     statusEl.textContent = "Código lido: " + code + " — a procurar produto...";
     lookupProduct(code, statusEl);
   }
