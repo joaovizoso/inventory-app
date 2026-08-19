@@ -611,7 +611,11 @@
             Html5QrcodeSupportedFormats.CODE_39,
             Html5QrcodeSupportedFormats.QR_CODE
           ],
-          verbose: false
+          verbose: false,
+          // Em browsers com deteção nativa (ex. Chrome/Android), usa-a em vez
+          // do zxing-js — é mais tolerante a ângulo/curvatura da embalagem.
+          // Sem efeito no Safari/iOS, que não expõe deteção nativa à web.
+          experimentalFeatures: { useBarCodeDetectorIfSupported: true }
         });
       }
 
@@ -621,7 +625,7 @@
       await html5QrCode.start(
         { facingMode: "environment" },
         {
-          fps: 10,
+          fps: 15,
           // Caixa de captura larga e baixa (proporcional ao ecrã), a imitar a
           // forma de um código de barras — dá mais margem de alinhamento do
           // que uma caixa pequena fixa, sem obrigar a aproximar tanto a câmara.
