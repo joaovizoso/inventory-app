@@ -262,8 +262,8 @@
     position: absolute;
     top: 50%; left: 50%;
     transform: translate(-50%, -50%);
-    width: 78%;
-    height: 40%;
+    width: 85%;
+    height: 42%;
     border: 2px solid #ffffffaa;
     border-radius: 10px;
     pointer-events: none;
@@ -615,7 +615,25 @@
 
       await html5QrCode.start(
         { facingMode: "environment" },
-        { fps: 10, qrbox: { width: 260, height: 140 } },
+        {
+          fps: 10,
+          // Caixa de captura larga e baixa (proporcional ao ecrã), a imitar a
+          // forma de um código de barras — dá mais margem de alinhamento do
+          // que uma caixa pequena fixa, sem obrigar a aproximar tanto a câmara.
+          qrbox: function (viewfinderWidth, viewfinderHeight) {
+            var width = Math.floor(viewfinderWidth * 0.85);
+            var height = Math.floor(Math.min(viewfinderHeight * 0.42, width * 0.55));
+            return { width: width, height: height };
+          },
+          // Pede resolução mais alta à câmara: mais pixels no recorte ajudam
+          // a descodificar códigos mais pequenos/afastados.
+          videoConstraints: {
+            facingMode: "environment",
+            width: { ideal: 1920 },
+            height: { ideal: 1080 },
+            advanced: [{ focusMode: "continuous" }]
+          }
+        },
         function (decodedText) { onBarcodeDetected(decodedText, statusEl); },
         function () { /* nenhum código detetado neste frame — ignora e continua */ }
       );
