@@ -5,10 +5,17 @@ inventário da dispensa e do frigorífico em casa.
 
 ## Funcionalidades
 
-- Leitura de código de barras pela câmara do telemóvel, via
-  [`html5-qrcode`](https://github.com/mebjas/html5-qrcode) (carregada por CDN) —
-  funciona em qualquer browser moderno, incluindo Safari/iOS, desde que servido
-  por HTTPS. Se a câmara não estiver disponível, cai para introdução manual.
+- Leitura de código de barras de duas formas, via
+  [`html5-qrcode`](https://github.com/mebjas/html5-qrcode) (carregada por CDN):
+  - **Ao vivo** — deteção contínua a partir do preview de vídeo da câmara.
+  - **Foto** — abre a app de câmara nativa do dispositivo (`<input capture>`),
+    tira uma foto à resolução total do sensor e decodifica-a. Costuma ler
+    códigos que a deteção ao vivo não consegue (mais resolução, melhor foco
+    nativo), e é a única via para tirar partido de HDR/estabilização em
+    iPhone, já que a API `ImageCapture` não existe no Safari.
+  Ambas funcionam em qualquer browser moderno, incluindo Safari/iOS, desde
+  que servido por HTTPS. Se a câmara não estiver disponível, cai para
+  introdução manual.
 - Consulta automática do nome e imagem do produto na
   [Open Food Facts](https://world.openfoodfacts.org/) a partir do código de barras.
 - Inventário separado por **Dispensa** e **Frigorífico**, com contador de
