@@ -360,6 +360,7 @@
   var editingId = null;
   var html5QrCode = null;
   var scannerRunning = false;
+  var scanHintTimer = null;
 
   function loadItems() {
     try {
@@ -570,6 +571,10 @@
   // qualquer browser incluindo Safari/iOS; requer HTTPS e permissão da câmara).
   function stopScanner() {
     document.getElementById("scanner-wrap").style.display = "none";
+    if (scanHintTimer) {
+      clearInterval(scanHintTimer);
+      scanHintTimer = null;
+    }
     if (html5QrCode && scannerRunning) {
       scannerRunning = false;
       html5QrCode.stop().catch(function (err) {
@@ -638,6 +643,20 @@
         function () { /* nenhum código detetado neste frame — ignora e continua */ }
       );
       scannerRunning = true;
+
+      // Enquanto não se lê nenhuma barra válida, o callback de erro do
+      // html5-qrcode dispara a cada frame (é normal, não é falha) — por
+      // isso a pista de "está com dificuldade" é dada por tempo decorrido,
+      // não por essas falhas frame-a-frame.
+      var scanStartedAt = Date.now();
+      scanHintTimer = setInterval(function () {
+        var elapsed = Date.now() - scanStartedAt;
+        if (elapsed > 7000) {
+          statusEl.textContent = "Ainda sem conseguir ler as barras — tenta melhorar a luz ou mudar o ângulo. Podes sempre introduzir o código manualmente abaixo.";
+        } else if (elapsed > 3000) {
+          statusEl.textContent = "A tentar ler... ajusta a distância (nem muito perto, nem muito longe).";
+        }
+      }, 1000);
     } catch (err) {
       console.error(err);
       statusEl.textContent = "Não foi possível aceder à câmara — verifica as permissões ou introduz o código manualmente.";
