@@ -370,6 +370,7 @@
   var html5QrCode = null;
   var scannerRunning = false;
   var scanHintTimer = null;
+  var lastLookedUpBarcode = null;
 
   function loadItems() {
     try {
@@ -501,11 +502,23 @@
 
   document.getElementById("search").addEventListener("input", render);
 
+  // Se o código for introduzido/editado à mão, procura o produto assim que
+  // o campo perde o foco (mesma pesquisa que acontece depois de um scan).
+  document.getElementById("f-barcode").addEventListener("blur", function () {
+    var code = this.value.trim();
+    if (!code || code === lastLookedUpBarcode) return;
+    lastLookedUpBarcode = code;
+    var statusEl = document.getElementById("scan-status");
+    statusEl.textContent = "A procurar produto...";
+    lookupProduct(code, statusEl);
+  });
+
   // Add sheet
   var backdrop = document.getElementById("sheet-backdrop");
 
   function openSheet() {
     editingId = null;
+    lastLookedUpBarcode = null;
     document.getElementById("f-barcode").value = "";
     document.getElementById("f-name").value = "";
     document.getElementById("f-qty").value = "1";
@@ -686,6 +699,7 @@
   function onBarcodeDetected(code, statusEl) {
     stopScanner();
     document.getElementById("f-barcode").value = code;
+    lastLookedUpBarcode = code;
     statusEl.textContent = "Código lido: " + code + " — a procurar produto...";
     lookupProduct(code, statusEl);
   }
