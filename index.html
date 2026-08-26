@@ -550,6 +550,21 @@
     await refreshAll();
   }
 
+  // TEMPORÁRIO — diagnóstico do bug "RLS violation ao criar casa": mostra o
+  // que a app vê na sessão atual, para perceber se o access_token está
+  // presente/válido no momento do pedido. Remover depois de resolvido.
+  async function debugAuthInfo() {
+    try {
+      var { data } = await sb.auth.getSession();
+      var s = data.session;
+      if (!s || !s.access_token) return "[debug] sem sessão/access_token no cliente";
+      var payload = JSON.parse(atob(s.access_token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/")));
+      return "[debug] sub=" + payload.sub + " role=" + payload.role + " exp=" + new Date(payload.exp * 1000).toISOString();
+    } catch (e) {
+      return "[debug] erro a decodificar sessão: " + e.message;
+    }
+  }
+
   $("hh-create-btn").onclick = async function () {
     var name = $("hh-name").value.trim();
     var statusEl = $("hh-status");
@@ -559,7 +574,9 @@
     var { data, error } = await sb.from("households").insert({ name: name }).select().single();
     if (error) {
       statusEl.className = "status-msg error";
-      statusEl.textContent = "Não foi possível criar a casa: " + error.message;
+      var dbg = await debugAuthInfo();
+      statusEl.textContent = "Não foi possível criar a casa: " + error.message + " — " + dbg;
+      console.error(error, dbg);
       return;
     }
     currentHousehold = data;
