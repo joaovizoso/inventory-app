@@ -4,6 +4,10 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Inventário — Dispensa &amp; Frigorífico</title>
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#3a6b52">
 <style>
   :root {
     --bg: #f4f3ef;
@@ -24,6 +28,55 @@
     color: var(--ink);
     padding-bottom: 90px;
   }
+  .hidden { display: none !important; }
+
+  /* Ecrãs de largura total (auth / casa) */
+  .full-screen {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+  }
+  .full-card {
+    width: 100%;
+    max-width: 380px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 28px 24px;
+  }
+  .full-card h1 {
+    font-size: 22px;
+    margin: 0 0 6px;
+  }
+  .full-card p.sub {
+    color: var(--muted);
+    font-size: 14px;
+    margin: 0 0 20px;
+  }
+  .divider {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: var(--muted);
+    font-size: 12px;
+    margin: 22px 0;
+  }
+  .divider::before, .divider::after {
+    content: "";
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+  .status-msg {
+    font-size: 13px;
+    color: var(--muted);
+    margin-top: 10px;
+    min-height: 18px;
+  }
+  .status-msg.error { color: var(--danger); }
+
   header {
     position: sticky;
     top: 0;
@@ -32,34 +85,40 @@
     padding: 16px 16px 8px;
     border-bottom: 1px solid var(--border);
   }
-  h1 {
-    font-size: 20px;
-    margin: 0 0 12px;
-    font-weight: 700;
-  }
-  .tabs {
+  .header-row {
     display: flex;
-    gap: 8px;
-    margin-bottom: 10px;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
   }
+  h1 { font-size: 20px; margin: 0; font-weight: 700; }
+  .icon-btn {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border: 1px solid var(--border);
+    background: var(--card);
+    font-size: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+  }
+  .tabs { display: flex; gap: 8px; margin-bottom: 10px; }
   .tab {
     flex: 1;
     text-align: center;
-    padding: 10px;
+    padding: 10px 6px;
     border-radius: 10px;
     background: var(--card);
     border: 1px solid var(--border);
-    font-size: 14px;
+    font-size: 13px;
     font-weight: 600;
     color: var(--muted);
     cursor: pointer;
     user-select: none;
   }
-  .tab.active {
-    background: var(--accent);
-    color: white;
-    border-color: var(--accent);
-  }
+  .tab.active { background: var(--accent); color: white; border-color: var(--accent); }
   .search {
     width: 100%;
     padding: 10px 12px;
@@ -68,15 +127,9 @@
     font-size: 14px;
     background: var(--card);
   }
-  main {
-    padding: 12px 16px 16px;
-  }
-  .empty {
-    text-align: center;
-    color: var(--muted);
-    padding: 60px 20px;
-    font-size: 14px;
-  }
+  main { padding: 12px 16px 16px; }
+  .empty { text-align: center; color: var(--muted); padding: 60px 20px; font-size: 14px; }
+
   .item {
     display: flex;
     align-items: center;
@@ -87,10 +140,7 @@
     padding: 12px;
     margin-bottom: 10px;
   }
-  .item-info {
-    flex: 1;
-    min-width: 0;
-  }
+  .item-info { flex: 1; min-width: 0; }
   .item-name {
     font-weight: 600;
     font-size: 15px;
@@ -98,241 +148,208 @@
     overflow: hidden;
     text-overflow: ellipsis;
   }
-  .item-meta {
-    font-size: 12px;
-    color: var(--muted);
-    margin-top: 2px;
-  }
-  .item-meta.low {
-    color: var(--danger);
-    font-weight: 600;
-  }
-  .qty-controls {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
+  .item-meta { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .item-meta.low { color: var(--danger); font-weight: 600; }
+  .qty-controls { display: flex; align-items: center; gap: 8px; }
   .qty-btn {
-    width: 32px;
-    height: 32px;
-    border-radius: 50%;
-    border: 1px solid var(--border);
-    background: var(--bg);
-    font-size: 18px;
-    font-weight: 700;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    color: var(--ink);
+    width: 32px; height: 32px; border-radius: 50%;
+    border: 1px solid var(--border); background: var(--bg);
+    font-size: 18px; font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; color: var(--ink);
   }
-  .qty-value {
-    min-width: 22px;
-    text-align: center;
-    font-weight: 700;
-    font-size: 15px;
-  }
+  .qty-value { min-width: 22px; text-align: center; font-weight: 700; font-size: 15px; }
   .item-thumb {
-    width: 44px;
-    height: 44px;
-    border-radius: 8px;
-    object-fit: cover;
-    background: var(--border);
-    flex-shrink: 0;
+    width: 44px; height: 44px; border-radius: 8px;
+    object-fit: cover; background: var(--border); flex-shrink: 0;
   }
-  .remove-btn {
-    background: none;
-    border: none;
-    color: var(--muted);
-    font-size: 18px;
-    padding: 4px 6px;
-    cursor: pointer;
+  .remove-btn { background: none; border: none; color: var(--muted); font-size: 18px; padding: 4px 6px; cursor: pointer; }
+  .checkbox-btn {
+    width: 26px; height: 26px; border-radius: 50%;
+    border: 2px solid var(--border); background: var(--card);
+    flex-shrink: 0; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; font-size: 14px; color: white;
   }
+  .checkbox-btn.checked { background: var(--accent); border-color: var(--accent); }
+  .item-name.checked { text-decoration: line-through; color: var(--muted); }
+
   .fab {
-    position: fixed;
-    right: 20px;
-    bottom: 20px;
-    width: 60px;
-    height: 60px;
-    border-radius: 50%;
-    background: var(--accent);
-    color: white;
-    border: none;
-    font-size: 26px;
-    box-shadow: 0 4px 14px rgba(0,0,0,0.25);
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    position: fixed; right: 20px; bottom: 20px;
+    width: 60px; height: 60px; border-radius: 50%;
+    background: var(--accent); color: white; border: none; font-size: 26px;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.25); cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
   }
   .fab:active { background: var(--accent-dark); }
 
   .sheet-backdrop {
-    position: fixed;
-    inset: 0;
-    background: rgba(0,0,0,0.45);
-    display: none;
-    z-index: 50;
-    align-items: flex-end;
-    justify-content: center;
+    position: fixed; inset: 0; background: rgba(0,0,0,0.45);
+    display: none; z-index: 50; align-items: flex-end; justify-content: center;
   }
   .sheet-backdrop.open { display: flex; }
   .sheet {
-    background: var(--bg);
-    width: 100%;
-    max-width: 480px;
-    border-radius: 20px 20px 0 0;
-    padding: 20px 20px calc(20px + env(safe-area-inset-bottom));
-    max-height: 88vh;
-    overflow-y: auto;
+    background: var(--bg); width: 100%; max-width: 480px;
+    border-radius: 20px 20px 0 0; padding: 20px 20px calc(20px + env(safe-area-inset-bottom));
+    max-height: 88vh; overflow-y: auto;
   }
-  .sheet h2 {
-    margin: 0 0 14px;
-    font-size: 18px;
-  }
-  .field {
-    margin-bottom: 14px;
-  }
-  .field label {
-    display: block;
-    font-size: 12px;
-    color: var(--muted);
-    margin-bottom: 4px;
-    font-weight: 600;
-  }
+  .sheet h2 { margin: 0 0 14px; font-size: 18px; }
+  .field { margin-bottom: 14px; }
+  .field label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 4px; font-weight: 600; }
   .field input, .field select {
-    width: 100%;
-    padding: 11px 12px;
-    border-radius: 10px;
-    border: 1px solid var(--border);
-    font-size: 15px;
-    background: var(--card);
+    width: 100%; padding: 11px 12px; border-radius: 10px;
+    border: 1px solid var(--border); font-size: 15px; background: var(--card);
   }
-  .row2 {
-    display: flex;
-    gap: 10px;
-  }
+  .row2 { display: flex; gap: 10px; }
   .row2 > div { flex: 1; }
   .btn {
-    width: 100%;
-    padding: 13px;
-    border-radius: 10px;
-    border: none;
-    font-size: 15px;
-    font-weight: 700;
-    cursor: pointer;
+    width: 100%; padding: 13px; border-radius: 10px; border: none;
+    font-size: 15px; font-weight: 700; cursor: pointer;
   }
-  .btn-primary {
-    background: var(--accent);
-    color: white;
-    margin-top: 4px;
+  .btn-primary { background: var(--accent); color: white; margin-top: 4px; }
+  .btn-secondary { background: var(--card); color: var(--ink); border: 1px solid var(--border); margin-top: 8px; }
+  .scan-buttons-row { display: flex; gap: 10px; margin-bottom: 14px; }
+  .btn-scan { background: var(--ink); color: white; margin-bottom: 0; }
+  .scan-status { font-size: 13px; color: var(--muted); text-align: center; margin: -6px 0 14px; }
+  .mode-toggle {
+    text-align: center; font-size: 13px; color: var(--accent);
+    text-decoration: underline; cursor: pointer; margin: -6px 0 16px;
   }
-  .btn-secondary {
-    background: var(--card);
-    color: var(--ink);
-    border: 1px solid var(--border);
-    margin-top: 8px;
-  }
-  .scan-buttons-row {
-    display: flex;
-    gap: 10px;
-    margin-bottom: 14px;
-  }
-  .btn-scan {
-    background: var(--ink);
-    color: white;
-    margin-bottom: 0;
-  }
-  .scan-status {
-    font-size: 13px;
-    color: var(--muted);
-    text-align: center;
-    margin: -6px 0 14px;
-  }
-  #scanner-wrap {
-    position: relative;
-    display: none;
-    border-radius: 12px;
-    overflow: hidden;
-    margin-bottom: 14px;
-    background: black;
-  }
-  #scanner-video-container video {
-    width: 100%;
-    display: block;
-    max-height: 260px;
-    object-fit: cover;
-  }
+  #scanner-wrap { position: relative; display: none; border-radius: 12px; overflow: hidden; margin-bottom: 14px; background: black; }
+  #scanner-video-container video { width: 100%; display: block; max-height: 260px; object-fit: cover; }
   #scanner-frame {
-    position: absolute;
-    top: 50%; left: 50%;
-    transform: translate(-50%, -50%);
-    width: 85%;
-    height: 42%;
-    border: 2px solid #ffffffaa;
-    border-radius: 10px;
-    pointer-events: none;
+    position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+    width: 85%; height: 42%; border: 2px solid #ffffffaa; border-radius: 10px; pointer-events: none;
   }
   .toast {
-    position: fixed;
-    bottom: 24px;
-    left: 50%;
-    transform: translateX(-50%);
-    background: var(--ink);
-    color: white;
-    padding: 10px 18px;
-    border-radius: 10px;
-    font-size: 14px;
-    z-index: 100;
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 0.25s;
+    position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+    background: var(--ink); color: white; padding: 10px 18px; border-radius: 10px;
+    font-size: 14px; z-index: 100; opacity: 0; pointer-events: none; transition: opacity 0.25s;
   }
   .toast.show { opacity: 1; }
+  .invite-code-box {
+    display: flex; align-items: center; justify-content: space-between;
+    background: var(--bg); border: 1px dashed var(--border); border-radius: 10px;
+    padding: 12px 14px; font-size: 20px; font-weight: 700; letter-spacing: 2px; margin-bottom: 14px;
+  }
+  .invite-code-box button { border: none; background: none; font-size: 13px; color: var(--accent); font-weight: 700; cursor: pointer; }
+  .member-list { font-size: 13px; color: var(--muted); margin-bottom: 18px; }
 </style>
 </head>
 <body>
 
-<header>
-  <h1>🧺 Inventário</h1>
-  <div class="tabs">
-    <div class="tab active" data-loc="dispensa">Dispensa</div>
-    <div class="tab" data-loc="frigorifico">Frigorífico</div>
+<!-- ================= AUTH ================= -->
+<div class="full-screen" id="auth-screen">
+  <div class="full-card">
+    <h1>🧺 Inventário</h1>
+    <p class="sub">Entra com o teu email — enviamos um link de acesso, sem palavra-passe.</p>
+    <div class="field">
+      <label>Email</label>
+      <input id="auth-email" type="email" inputmode="email" placeholder="tu@exemplo.com" autocomplete="email">
+    </div>
+    <button class="btn btn-primary" id="auth-send-btn">Enviar link de acesso</button>
+    <div class="status-msg" id="auth-status"></div>
   </div>
-  <input class="search" id="search" placeholder="Pesquisar produto...">
-</header>
+</div>
 
-<main>
-  <div id="list"></div>
-  <div id="empty" class="empty" style="display:none;">Ainda não tens nada aqui. Toca em + para adicionar um produto.</div>
-</main>
+<!-- ================= HOUSEHOLD ================= -->
+<div class="full-screen hidden" id="household-screen">
+  <div class="full-card">
+    <h1>A tua casa</h1>
+    <p class="sub">Cria uma casa nova ou entra numa já existente com um código de convite.</p>
+    <div class="field">
+      <label>Nome da casa</label>
+      <input id="hh-name" placeholder="ex. Casa do João e da Constança">
+    </div>
+    <button class="btn btn-primary" id="hh-create-btn">Criar casa</button>
 
-<button class="fab" id="fab">+</button>
+    <div class="divider">ou</div>
 
+    <div class="field">
+      <label>Código de convite</label>
+      <input id="hh-code" placeholder="ex. a1b2c3d4" style="text-transform:lowercase;">
+    </div>
+    <button class="btn btn-secondary" id="hh-join-btn">Entrar com código</button>
+
+    <div class="status-msg" id="hh-status"></div>
+    <button class="btn btn-secondary" id="hh-signout-btn" style="margin-top:24px;">Sair</button>
+  </div>
+</div>
+
+<!-- ================= APP ================= -->
+<div class="hidden" id="app-screen">
+  <header>
+    <div class="header-row">
+      <h1 id="app-title">🧺 Inventário</h1>
+      <div style="display:flex; gap:8px;">
+        <button class="icon-btn" id="shopping-nav-btn" title="Lista de compras">🛒</button>
+        <button class="icon-btn" id="household-nav-btn" title="Casa">⚙️</button>
+      </div>
+    </div>
+    <div class="tabs" id="location-tabs">
+      <div class="tab active" data-loc="dispensa">Dispensa</div>
+      <div class="tab" data-loc="frigorifico">Frigorífico</div>
+      <div class="tab" data-loc="congelador">Congelador</div>
+    </div>
+    <input class="search" id="search" placeholder="Pesquisar...">
+  </header>
+
+  <main>
+    <div id="list"></div>
+    <div id="empty" class="empty hidden"></div>
+  </main>
+
+  <button class="fab" id="fab">+</button>
+</div>
+
+<!-- ================= ADD ITEM SHEET ================= -->
 <div class="sheet-backdrop" id="sheet-backdrop">
   <div class="sheet">
     <h2>Adicionar produto</h2>
 
-    <div class="scan-buttons-row">
-      <button class="btn btn-scan" id="scan-btn">📷 Ler ao vivo</button>
-      <button class="btn btn-scan" id="photo-btn">📸 Tirar foto</button>
-    </div>
-    <input type="file" accept="image/*" capture="environment" id="photo-input" style="display:none;">
-    <div class="scan-status" id="scan-status"></div>
-    <div id="scanner-wrap">
-      <div id="scanner-video-container"></div>
-      <div id="scanner-frame"></div>
+    <div id="barcode-mode-block">
+      <div class="scan-buttons-row">
+        <button class="btn btn-scan" id="scan-btn">📷 Ler ao vivo</button>
+        <button class="btn btn-scan" id="photo-btn">📸 Tirar foto</button>
+      </div>
+      <input type="file" accept="image/*" capture="environment" id="photo-input" style="display:none;">
+      <div class="scan-status" id="scan-status"></div>
+      <div id="scanner-wrap">
+        <div id="scanner-video-container"></div>
+        <div id="scanner-frame"></div>
+      </div>
+      <div class="field">
+        <label>Código de barras</label>
+        <input id="f-barcode" inputmode="numeric" placeholder="ex. 5601234567890">
+      </div>
     </div>
 
-    <div class="field">
-      <label>Código de barras</label>
-      <input id="f-barcode" inputmode="numeric" placeholder="ex. 5601234567890">
-    </div>
+    <div class="mode-toggle" id="mode-toggle-btn">Não tem código de barras (fresco, tupperware...)</div>
+
     <div class="field">
       <label>Nome do produto</label>
       <input id="f-name" placeholder="ex. Leite meio-gordo 1L">
     </div>
     <img id="f-image" class="item-thumb" style="display:none; margin-bottom: 10px;">
+
+    <div id="manual-mode-block" class="hidden">
+      <div class="field">
+        <label>Categoria</label>
+        <select id="f-category">
+          <option value="">— Selecionar —</option>
+          <option value="laticinios">Laticínios</option>
+          <option value="proteina">Proteína (carne/peixe/ovos)</option>
+          <option value="vegetais">Vegetais</option>
+          <option value="frutas">Frutas</option>
+          <option value="cereais">Cereais/Massas</option>
+          <option value="condimentos">Condimentos</option>
+          <option value="pratos">Pratos preparados / sobras</option>
+          <option value="outro">Outro</option>
+        </select>
+      </div>
+      <button class="btn btn-secondary" id="manual-photo-btn" type="button">📸 Foto do item (opcional)</button>
+      <input type="file" accept="image/*" capture="environment" id="manual-photo-input" style="display:none;">
+      <div class="status-msg" id="manual-photo-status"></div>
+    </div>
 
     <div class="row2">
       <div class="field">
@@ -344,6 +361,7 @@
         <select id="f-loc">
           <option value="dispensa">Dispensa</option>
           <option value="frigorifico">Frigorífico</option>
+          <option value="congelador">Congelador</option>
         </select>
       </div>
     </div>
@@ -361,88 +379,302 @@
   </div>
 </div>
 
+<!-- ================= SHOPPING LIST ADD SHEET ================= -->
+<div class="sheet-backdrop" id="shopping-sheet-backdrop">
+  <div class="sheet">
+    <h2>Adicionar à lista de compras</h2>
+    <div class="field">
+      <label>Produto</label>
+      <input id="sl-name" placeholder="ex. Detergente da loiça">
+    </div>
+    <div class="field">
+      <label>Quantidade</label>
+      <input id="sl-qty" type="number" inputmode="numeric" min="1" value="1">
+    </div>
+    <button class="btn btn-primary" id="sl-save-btn">Adicionar</button>
+    <button class="btn btn-secondary" id="sl-cancel-btn">Cancelar</button>
+  </div>
+</div>
+
+<!-- ================= HOUSEHOLD INFO SHEET ================= -->
+<div class="sheet-backdrop" id="household-sheet-backdrop">
+  <div class="sheet">
+    <h2 id="hh-info-name">A tua casa</h2>
+    <p class="sub" style="margin-top:-8px;">Partilha este código para outra pessoa entrar na mesma casa:</p>
+    <div class="invite-code-box">
+      <span id="hh-info-code">--------</span>
+      <button id="hh-info-copy-btn">Copiar</button>
+    </div>
+    <button class="btn btn-secondary" id="hh-signout-btn-2">Sair da conta</button>
+    <button class="btn btn-secondary" id="hh-info-close-btn">Fechar</button>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 <script>
 (function () {
   "use strict";
 
-  var STORAGE_KEY = "inventario_items_v1";
+  // ============================================================
+  // Configuração — seguras para expor no frontend (protegidas por RLS)
+  // ============================================================
+  if (!window.supabase) {
+    document.body.innerHTML =
+      '<div style="padding:40px 24px; text-align:center; font-family:sans-serif; color:#1c1c1a;">' +
+      '<h1 style="font-size:18px;">Não foi possível carregar a aplicação</h1>' +
+      '<p style="color:#6b6b64;">Verifica a tua ligação à internet e recarrega a página.</p>' +
+      '</div>';
+    return;
+  }
+
+  var SUPABASE_URL = "https://qbzjgcddhaurmwnrwvdf.supabase.co";
+  var SUPABASE_ANON_KEY = "sb_publishable_VZhD5-AGdG5S7YTnOigPXA_LWuP-hNA";
+  var sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+  // ============================================================
+  // Estado
+  // ============================================================
+  var session = null;
+  var currentHousehold = null;
+  var currentView = "inventory"; // 'inventory' | 'shopping'
   var currentLoc = "dispensa";
-  var editingId = null;
+  var items = [];
+  var shoppingItems = [];
+  var manualMode = false;
+  var manualPhotoUrl = "";
+  var currentProductMeta = null; // dados extra da OFF para o produto atual
   var html5QrCode = null;
   var scannerRunning = false;
   var scanHintTimer = null;
   var lastLookedUpBarcode = null;
 
-  function loadItems() {
-    try {
-      var raw = localStorage.getItem(STORAGE_KEY);
-      return raw ? JSON.parse(raw) : [];
-    } catch (e) {
-      console.error("Falha a carregar inventário", e);
-      return [];
-    }
-  }
-
-  function saveItems(items) {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
-  }
-
-  var items = loadItems();
-
-  function uid() {
-    return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
-  }
-
-  // Datas de validade tratadas como strings "YYYY-MM-DD" (formato nativo do
-  // <input type=date>) e comparadas lexicograficamente — evita conversões
-  // para Date/UTC, que podiam desviar o dia consoante o fuso horário.
-  function todayISODate() {
-    var d = new Date();
-    return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
-  }
-
-  function addDaysISO(baseISO, days) {
-    var parts = baseISO.split("-").map(Number);
-    var d = new Date(parts[0], parts[1] - 1, parts[2]);
-    d.setDate(d.getDate() + days);
-    return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
-  }
-
-  function formatDatePt(iso) {
-    var parts = iso.split("-");
-    return parts[2] + "/" + parts[1] + "/" + parts[0];
-  }
+  function $(id) { return document.getElementById(id); }
 
   function toast(msg) {
-    var el = document.getElementById("toast");
+    var el = $("toast");
     el.textContent = msg;
     el.classList.add("show");
     clearTimeout(toast._t);
     toast._t = setTimeout(function () { el.classList.remove("show"); }, 2200);
   }
 
+  function uid() {
+    return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+  }
+
+  function todayISODate() {
+    var d = new Date();
+    return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+  }
+  function addDaysISO(baseISO, days) {
+    var parts = baseISO.split("-").map(Number);
+    var d = new Date(parts[0], parts[1] - 1, parts[2]);
+    d.setDate(d.getDate() + days);
+    return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+  }
+  function formatDatePt(iso) {
+    var parts = iso.split("-");
+    return parts[2] + "/" + parts[1] + "/" + parts[0];
+  }
+
+  function showScreen(name) {
+    $("auth-screen").classList.toggle("hidden", name !== "auth");
+    $("household-screen").classList.toggle("hidden", name !== "household");
+    $("app-screen").classList.toggle("hidden", name !== "app");
+  }
+
+  // ============================================================
+  // Auth
+  // ============================================================
+  $("auth-send-btn").onclick = async function () {
+    var email = $("auth-email").value.trim();
+    var statusEl = $("auth-status");
+    statusEl.className = "status-msg";
+    if (!email) { statusEl.textContent = "Indica o teu email."; return; }
+    statusEl.textContent = "A enviar...";
+    var { error } = await sb.auth.signInWithOtp({
+      email: email,
+      options: { emailRedirectTo: window.location.href.split("#")[0] }
+    });
+    if (error) {
+      statusEl.className = "status-msg error";
+      statusEl.textContent = "Não foi possível enviar o link: " + error.message;
+    } else {
+      statusEl.textContent = "Verifica o teu email — enviámos um link de acesso.";
+    }
+  };
+
+  function signOut() {
+    sb.auth.signOut();
+  }
+  $("hh-signout-btn").onclick = signOut;
+  $("hh-signout-btn-2").onclick = signOut;
+
+  sb.auth.onAuthStateChange(function (event, newSession) {
+    session = newSession;
+    if (session) {
+      boot();
+    } else {
+      currentHousehold = null;
+      showScreen("auth");
+    }
+  });
+
+  // ============================================================
+  // Household
+  // ============================================================
+  async function boot() {
+    var { data, error } = await sb
+      .from("household_members")
+      .select("household_id, households(id, name, invite_code)")
+      .eq("user_id", session.user.id)
+      .limit(1)
+      .maybeSingle();
+
+    if (error) {
+      console.error(error);
+      toast("Erro a carregar a casa");
+      return;
+    }
+
+    if (!data) {
+      showScreen("household");
+      return;
+    }
+
+    currentHousehold = data.households;
+    showScreen("app");
+    await refreshAll();
+  }
+
+  $("hh-create-btn").onclick = async function () {
+    var name = $("hh-name").value.trim();
+    var statusEl = $("hh-status");
+    statusEl.className = "status-msg";
+    if (!name) { statusEl.textContent = "Indica um nome para a casa."; return; }
+    statusEl.textContent = "A criar...";
+    var { data, error } = await sb.from("households").insert({ name: name }).select().single();
+    if (error) {
+      statusEl.className = "status-msg error";
+      statusEl.textContent = "Não foi possível criar a casa: " + error.message;
+      return;
+    }
+    currentHousehold = data;
+    showScreen("app");
+    await refreshAll();
+  };
+
+  $("hh-join-btn").onclick = async function () {
+    var code = $("hh-code").value.trim().toLowerCase();
+    var statusEl = $("hh-status");
+    statusEl.className = "status-msg";
+    if (!code) { statusEl.textContent = "Indica o código de convite."; return; }
+    statusEl.textContent = "A entrar...";
+    var { data, error } = await sb.rpc("join_household_by_invite_code", { code: code });
+    if (error) {
+      statusEl.className = "status-msg error";
+      statusEl.textContent = "Código inválido ou erro: " + error.message;
+      return;
+    }
+    var { data: hh, error: hhErr } = await sb.from("households").select("*").eq("id", data).single();
+    if (hhErr) { statusEl.className = "status-msg error"; statusEl.textContent = hhErr.message; return; }
+    currentHousehold = hh;
+    showScreen("app");
+    await refreshAll();
+  };
+
+  $("household-nav-btn").onclick = function () {
+    $("hh-info-name").textContent = currentHousehold.name;
+    $("hh-info-code").textContent = currentHousehold.invite_code;
+    $("household-sheet-backdrop").classList.add("open");
+  };
+  $("hh-info-close-btn").onclick = function () {
+    $("household-sheet-backdrop").classList.remove("open");
+  };
+  $("hh-info-copy-btn").onclick = function () {
+    navigator.clipboard.writeText(currentHousehold.invite_code).then(function () {
+      toast("Código copiado");
+    }).catch(function () {
+      toast("Não foi possível copiar — copia manualmente: " + currentHousehold.invite_code);
+    });
+  };
+
+  // ============================================================
+  // Carregar dados
+  // ============================================================
+  async function refreshAll() {
+    await Promise.all([loadInventory(), loadShoppingList()]);
+    render();
+  }
+
+  async function loadInventory() {
+    var { data, error } = await sb
+      .from("inventory_items")
+      .select("*")
+      .eq("household_id", currentHousehold.id)
+      .order("name");
+    if (error) { console.error(error); toast("Erro a carregar inventário"); return; }
+    items = data || [];
+  }
+
+  async function loadShoppingList() {
+    var { data, error } = await sb
+      .from("shopping_list_items")
+      .select("*")
+      .eq("household_id", currentHousehold.id)
+      .order("checked")
+      .order("created_at");
+    if (error) { console.error(error); toast("Erro a carregar lista de compras"); return; }
+    shoppingItems = data || [];
+  }
+
+  async function logEvent(itemId, eventType, delta) {
+    try {
+      await sb.from("inventory_events").insert({
+        inventory_item_id: itemId,
+        household_id: currentHousehold.id,
+        user_id: session.user.id,
+        event_type: eventType,
+        delta: delta
+      });
+    } catch (e) {
+      console.error("Falha a registar evento", e);
+    }
+  }
+
+  // ============================================================
+  // Render
+  // ============================================================
   function render() {
-    var list = document.getElementById("list");
-    var empty = document.getElementById("empty");
-    var query = document.getElementById("search").value.trim().toLowerCase();
+    if (currentView === "shopping") {
+      renderShopping();
+    } else {
+      renderInventory();
+    }
+  }
+
+  function renderInventory() {
+    var list = $("list");
+    var empty = $("empty");
+    var query = $("search").value.trim().toLowerCase();
 
     var filtered = items.filter(function (it) {
       if (it.loc !== currentLoc) return false;
-      if (query && it.name.toLowerCase().indexOf(query) === -1 && it.barcode.indexOf(query) === -1) return false;
+      if (query && it.name.toLowerCase().indexOf(query) === -1 && (it.barcode || "").indexOf(query) === -1) return false;
       return true;
     });
-
     filtered.sort(function (a, b) { return a.name.localeCompare(b.name, "pt"); });
 
     list.innerHTML = "";
     if (filtered.length === 0) {
-      empty.style.display = "block";
+      empty.textContent = "Ainda não tens nada aqui. Toca em + para adicionar um produto.";
+      empty.classList.remove("hidden");
       return;
     }
-    empty.style.display = "none";
+    empty.classList.add("hidden");
 
     filtered.forEach(function (it) {
       var row = document.createElement("div");
@@ -450,8 +682,9 @@
 
       var thumb = document.createElement("img");
       thumb.className = "item-thumb";
-      thumb.src = it.image || "";
-      thumb.style.visibility = it.image ? "visible" : "hidden";
+      var thumbSrc = it.photo_url || "";
+      thumb.src = thumbSrc;
+      thumb.style.visibility = thumbSrc ? "visible" : "hidden";
       row.appendChild(thumb);
 
       var info = document.createElement("div");
@@ -462,23 +695,23 @@
       info.appendChild(name);
 
       var meta = document.createElement("div");
-      var isLow = it.lowStock != null && it.qty <= it.lowStock;
+      var isLow = it.low_stock != null && it.qty <= it.low_stock;
 
       var expiryText = "";
       var expiryWarn = false;
-      if (it.expiryDate) {
+      if (it.expiry_date) {
         var today = todayISODate();
         var soonCutoff = addDaysISO(today, 3);
-        var isExpired = it.expiryDate < today;
-        var isSoon = !isExpired && it.expiryDate <= soonCutoff;
+        var isExpired = it.expiry_date < today;
+        var isSoon = !isExpired && it.expiry_date <= soonCutoff;
         expiryWarn = isExpired || isSoon;
-        expiryText = (isExpired ? "Expirado " : isSoon ? "Expira em breve " : "Val. ") + formatDatePt(it.expiryDate);
+        expiryText = (isExpired ? "Expirado " : isSoon ? "Expira em breve " : "Val. ") + formatDatePt(it.expiry_date);
       }
 
       var metaParts = [];
       if (isLow) metaParts.push("Stock baixo");
       if (expiryText) metaParts.push(expiryText);
-      metaParts.push(it.barcode);
+      if (it.barcode) metaParts.push(it.barcode);
 
       meta.className = "item-meta" + (isLow || expiryWarn ? " low" : "");
       meta.textContent = metaParts.filter(Boolean).join(" · ");
@@ -491,7 +724,7 @@
       var minus = document.createElement("button");
       minus.className = "qty-btn";
       minus.textContent = "–";
-      minus.onclick = function () { changeQty(it.id, -1); };
+      minus.onclick = function () { changeQty(it, -1); };
       controls.appendChild(minus);
 
       var qty = document.createElement("div");
@@ -502,7 +735,7 @@
       var plus = document.createElement("button");
       plus.className = "qty-btn";
       plus.textContent = "+";
-      plus.onclick = function () { changeQty(it.id, 1); };
+      plus.onclick = function () { changeQty(it, 1); };
       controls.appendChild(plus);
 
       row.appendChild(controls);
@@ -510,64 +743,140 @@
       var remove = document.createElement("button");
       remove.className = "remove-btn";
       remove.textContent = "✕";
-      remove.onclick = function () { removeItem(it.id); };
+      remove.onclick = function () { removeItem(it); };
       row.appendChild(remove);
 
       list.appendChild(row);
     });
   }
 
-  function changeQty(id, delta) {
-    var it = items.find(function (i) { return i.id === id; });
-    if (!it) return;
-    it.qty = Math.max(0, it.qty + delta);
-    saveItems(items);
-    render();
+  function renderShopping() {
+    var list = $("list");
+    var empty = $("empty");
+    var query = $("search").value.trim().toLowerCase();
+
+    var filtered = shoppingItems.filter(function (it) {
+      if (query && it.name.toLowerCase().indexOf(query) === -1) return false;
+      return true;
+    });
+
+    list.innerHTML = "";
+    if (filtered.length === 0) {
+      empty.textContent = "A lista de compras está vazia.";
+      empty.classList.remove("hidden");
+      return;
+    }
+    empty.classList.add("hidden");
+
+    filtered.forEach(function (it) {
+      var row = document.createElement("div");
+      row.className = "item";
+
+      var check = document.createElement("button");
+      check.className = "checkbox-btn" + (it.checked ? " checked" : "");
+      check.textContent = it.checked ? "✓" : "";
+      check.onclick = function () { toggleShoppingItem(it); };
+      row.appendChild(check);
+
+      var info = document.createElement("div");
+      info.className = "item-info";
+      var name = document.createElement("div");
+      name.className = "item-name" + (it.checked ? " checked" : "");
+      name.textContent = it.name + (it.qty_wanted > 1 ? " ×" + it.qty_wanted : "");
+      info.appendChild(name);
+      row.appendChild(info);
+
+      var remove = document.createElement("button");
+      remove.className = "remove-btn";
+      remove.textContent = "✕";
+      remove.onclick = function () { removeShoppingItem(it); };
+      row.appendChild(remove);
+
+      list.appendChild(row);
+    });
   }
 
-  function removeItem(id) {
-    items = items.filter(function (i) { return i.id !== id; });
-    saveItems(items);
-    render();
+  async function changeQty(it, delta) {
+    var newQty = Math.max(0, it.qty + delta);
+    it.qty = newQty; // otimista
+    renderInventory();
+    var { error } = await sb.from("inventory_items").update({ qty: newQty }).eq("id", it.id);
+    if (error) { console.error(error); toast("Erro ao atualizar quantidade"); }
+    logEvent(it.id, "adjusted", delta);
   }
 
-  // Tabs
+  async function removeItem(it) {
+    items = items.filter(function (i) { return i.id !== it.id; });
+    renderInventory();
+    var { error } = await sb.from("inventory_items").delete().eq("id", it.id);
+    if (error) { console.error(error); toast("Erro ao remover"); }
+    logEvent(it.id, "deleted", -it.qty);
+  }
+
+  async function toggleShoppingItem(it) {
+    it.checked = !it.checked;
+    renderShopping();
+    await sb.from("shopping_list_items").update({ checked: it.checked }).eq("id", it.id);
+  }
+
+  async function removeShoppingItem(it) {
+    shoppingItems = shoppingItems.filter(function (i) { return i.id !== it.id; });
+    renderShopping();
+    await sb.from("shopping_list_items").delete().eq("id", it.id);
+  }
+
+  // ============================================================
+  // Navegação: tabs de local / vista de compras
+  // ============================================================
   document.querySelectorAll(".tab").forEach(function (tab) {
     tab.onclick = function () {
       document.querySelectorAll(".tab").forEach(function (t) { t.classList.remove("active"); });
       tab.classList.add("active");
       currentLoc = tab.dataset.loc;
+      currentView = "inventory";
+      $("location-tabs").classList.remove("hidden");
       render();
     };
   });
 
-  document.getElementById("search").addEventListener("input", render);
+  $("shopping-nav-btn").onclick = function () {
+    currentView = "shopping";
+    render();
+  };
 
-  // Se o código for introduzido/editado à mão, procura o produto assim que
-  // o campo perde o foco (mesma pesquisa que acontece depois de um scan).
-  document.getElementById("f-barcode").addEventListener("blur", function () {
-    var code = this.value.trim();
-    if (!code || code === lastLookedUpBarcode) return;
-    lastLookedUpBarcode = code;
-    var statusEl = document.getElementById("scan-status");
-    statusEl.textContent = "A procurar produto...";
-    lookupProduct(code, statusEl);
-  });
+  $("search").addEventListener("input", render);
 
-  // Add sheet
-  var backdrop = document.getElementById("sheet-backdrop");
+  // ============================================================
+  // Sheet: adicionar produto ao inventário
+  // ============================================================
+  var backdrop = $("sheet-backdrop");
+
+  function setManualMode(on) {
+    manualMode = on;
+    manualPhotoUrl = "";
+    $("manual-photo-status").textContent = "";
+    $("barcode-mode-block").classList.toggle("hidden", on);
+    $("manual-mode-block").classList.toggle("hidden", !on);
+    $("mode-toggle-btn").textContent = on
+      ? "Tem código de barras? Voltar a ler/introduzir"
+      : "Não tem código de barras (fresco, tupperware...)";
+    if (on) stopScanner();
+  }
+  $("mode-toggle-btn").onclick = function () { setManualMode(!manualMode); };
 
   function openSheet() {
-    editingId = null;
     lastLookedUpBarcode = null;
-    document.getElementById("f-barcode").value = "";
-    document.getElementById("f-name").value = "";
-    document.getElementById("f-qty").value = "1";
-    document.getElementById("f-expiry").value = "";
-    document.getElementById("f-lowstock").value = "";
-    document.getElementById("f-loc").value = currentLoc;
-    document.getElementById("f-image").style.display = "none";
-    document.getElementById("f-image").src = "";
+    currentProductMeta = null;
+    setManualMode(false);
+    $("f-barcode").value = "";
+    $("f-name").value = "";
+    $("f-category").value = "";
+    $("f-qty").value = "1";
+    $("f-expiry").value = "";
+    $("f-lowstock").value = "";
+    $("f-loc").value = currentLoc !== "" ? currentLoc : "dispensa";
+    $("f-image").style.display = "none";
+    $("f-image").src = "";
     stopScanner();
     backdrop.classList.add("open");
   }
@@ -577,81 +886,172 @@
     stopScanner();
   }
 
-  document.getElementById("fab").onclick = openSheet;
-  document.getElementById("cancel-btn").onclick = closeSheet;
-  backdrop.addEventListener("click", function (e) {
-    if (e.target === backdrop) closeSheet();
+  $("fab").onclick = function () {
+    if (currentView === "shopping") {
+      openShoppingSheet();
+    } else {
+      openSheet();
+    }
+  };
+  $("cancel-btn").onclick = closeSheet;
+  backdrop.addEventListener("click", function (e) { if (e.target === backdrop) closeSheet(); });
+
+  $("f-barcode").addEventListener("blur", function () {
+    var code = this.value.trim();
+    if (!code || code === lastLookedUpBarcode) return;
+    lastLookedUpBarcode = code;
+    var statusEl = $("scan-status");
+    statusEl.textContent = "A procurar produto...";
+    lookupProduct(code, statusEl);
   });
 
-  document.getElementById("save-btn").onclick = function () {
-    var barcode = document.getElementById("f-barcode").value.trim();
-    var name = document.getElementById("f-name").value.trim();
-    var qty = parseInt(document.getElementById("f-qty").value, 10);
-    var loc = document.getElementById("f-loc").value;
-    var expiryDate = document.getElementById("f-expiry").value;
-    var lowRaw = document.getElementById("f-lowstock").value.trim();
-    var lowStock = lowRaw === "" ? null : parseInt(lowRaw, 10);
-    var image = document.getElementById("f-image").src || "";
+  $("manual-photo-btn").onclick = function () { $("manual-photo-input").click(); };
+  $("manual-photo-input").addEventListener("change", async function (e) {
+    var file = e.target.files && e.target.files[0];
+    e.target.value = "";
+    if (!file) return;
+    var statusEl = $("manual-photo-status");
+    statusEl.textContent = "A enviar foto...";
+    try {
+      var path = currentHousehold.id + "/" + uid() + ".jpg";
+      var { error } = await sb.storage.from("item-photos").upload(path, file, { contentType: file.type || "image/jpeg" });
+      if (error) throw error;
+      var { data } = sb.storage.from("item-photos").getPublicUrl(path);
+      manualPhotoUrl = data.publicUrl;
+      $("f-image").src = manualPhotoUrl;
+      $("f-image").style.display = "block";
+      statusEl.textContent = "Foto adicionada.";
+    } catch (err) {
+      console.error(err);
+      statusEl.textContent = "Não foi possível enviar a foto — tenta outra vez.";
+    }
+  });
 
-    if (!name) {
-      toast("Indica o nome do produto");
-      return;
-    }
-    if (!expiryDate) {
-      toast("Indica a data de validade");
-      document.getElementById("f-expiry").focus();
-      return;
-    }
+  $("save-btn").onclick = async function () {
+    var barcode = manualMode ? "" : $("f-barcode").value.trim();
+    var name = $("f-name").value.trim();
+    var category = $("f-category").value || null;
+    var qty = parseInt($("f-qty").value, 10);
+    var loc = $("f-loc").value;
+    var expiryDate = $("f-expiry").value;
+    var lowRaw = $("f-lowstock").value.trim();
+    var lowStock = lowRaw === "" ? null : parseInt(lowRaw, 10);
+    var photoUrl = manualMode ? manualPhotoUrl : ($("f-image").src || "");
+
+    if (!name) { toast("Indica o nome do produto"); return; }
+    if (!expiryDate) { toast("Indica a data de validade"); $("f-expiry").focus(); return; }
     if (isNaN(qty) || qty < 0) qty = 0;
 
-    var existing = barcode
-      ? items.find(function (i) { return i.barcode === barcode && i.loc === loc; })
-      : null;
+    $("save-btn").disabled = true;
+    try {
+      if (barcode) {
+        await sb.from("products").upsert({
+          barcode: barcode,
+          name: name,
+          generic_name: currentProductMeta ? currentProductMeta.generic_name : null,
+          image_url: currentProductMeta ? currentProductMeta.image_url : null,
+          category_tags: currentProductMeta ? currentProductMeta.category_tags : [],
+          quantity_text: currentProductMeta ? currentProductMeta.quantity_text : null,
+          source: currentProductMeta ? currentProductMeta.source : "manual",
+          created_by: session.user.id
+        }, { onConflict: "barcode" });
+      }
 
-    if (existing) {
-      existing.qty += qty;
-      existing.name = name;
-      existing.expiryDate = expiryDate;
-      if (image) existing.image = image;
-      if (lowStock != null) existing.lowStock = lowStock;
-      toast("Quantidade atualizada");
-    } else {
-      items.push({
-        id: uid(),
-        barcode: barcode || "",
-        name: name,
-        qty: qty,
-        loc: loc,
-        expiryDate: expiryDate,
-        lowStock: lowStock,
-        image: image,
-        addedAt: Date.now()
+      var existing = null;
+      if (barcode) {
+        var { data: existingData } = await sb
+          .from("inventory_items")
+          .select("*")
+          .eq("household_id", currentHousehold.id)
+          .eq("barcode", barcode)
+          .eq("loc", loc)
+          .maybeSingle();
+        existing = existingData;
+      }
+
+      if (existing) {
+        var newQty = existing.qty + qty;
+        await sb.from("inventory_items").update({
+          qty: newQty,
+          name: name,
+          expiry_date: expiryDate,
+          low_stock: lowStock,
+          photo_url: photoUrl || existing.photo_url
+        }).eq("id", existing.id);
+        logEvent(existing.id, "adjusted", qty);
+        toast("Quantidade atualizada");
+      } else {
+        var { data: inserted, error: insertErr } = await sb.from("inventory_items").insert({
+          household_id: currentHousehold.id,
+          barcode: barcode || null,
+          name: name,
+          category: category,
+          loc: loc,
+          photo_url: photoUrl || null,
+          qty: qty,
+          expiry_date: expiryDate,
+          low_stock: lowStock,
+          added_by: session.user.id
+        }).select().single();
+        if (insertErr) throw insertErr;
+        logEvent(inserted.id, "added", qty);
+        toast("Produto adicionado");
+      }
+
+      currentLoc = loc;
+      currentView = "inventory";
+      document.querySelectorAll(".tab").forEach(function (t) {
+        t.classList.toggle("active", t.dataset.loc === loc);
       });
-      toast("Produto adicionado");
+      await loadInventory();
+      render();
+      closeSheet();
+    } catch (err) {
+      console.error(err);
+      toast("Erro ao guardar — tenta outra vez");
+    } finally {
+      $("save-btn").disabled = false;
     }
-
-    saveItems(items);
-    currentLoc = loc;
-    document.querySelectorAll(".tab").forEach(function (t) {
-      t.classList.toggle("active", t.dataset.loc === loc);
-    });
-    render();
-    closeSheet();
   };
 
-  // Barcode scanning — via html5-qrcode (decoding em JS puro, funciona em
-  // qualquer browser incluindo Safari/iOS; requer HTTPS e permissão da câmara).
+  // ============================================================
+  // Sheet: adicionar à lista de compras
+  // ============================================================
+  var shoppingBackdrop = $("shopping-sheet-backdrop");
+  function openShoppingSheet() {
+    $("sl-name").value = "";
+    $("sl-qty").value = "1";
+    shoppingBackdrop.classList.add("open");
+  }
+  $("sl-cancel-btn").onclick = function () { shoppingBackdrop.classList.remove("open"); };
+  shoppingBackdrop.addEventListener("click", function (e) { if (e.target === shoppingBackdrop) shoppingBackdrop.classList.remove("open"); });
+
+  $("sl-save-btn").onclick = async function () {
+    var name = $("sl-name").value.trim();
+    var qty = parseInt($("sl-qty").value, 10) || 1;
+    if (!name) { toast("Indica o nome do produto"); return; }
+    var { data, error } = await sb.from("shopping_list_items").insert({
+      household_id: currentHousehold.id,
+      name: name,
+      qty_wanted: qty,
+      added_by: session.user.id
+    }).select().single();
+    if (error) { console.error(error); toast("Erro ao adicionar"); return; }
+    shoppingItems.push(data);
+    render();
+    shoppingBackdrop.classList.remove("open");
+    toast("Adicionado à lista");
+  };
+
+  // ============================================================
+  // Leitura de código de barras — html5-qrcode (ao vivo + foto)
+  // ============================================================
   function stopScanner() {
-    document.getElementById("scanner-wrap").style.display = "none";
-    if (scanHintTimer) {
-      clearInterval(scanHintTimer);
-      scanHintTimer = null;
-    }
+    $("scanner-wrap").style.display = "none";
+    if (scanHintTimer) { clearInterval(scanHintTimer); scanHintTimer = null; }
     if (html5QrCode && scannerRunning) {
       scannerRunning = false;
-      return html5QrCode.stop().catch(function (err) {
-        console.error("Erro a parar a câmara", err);
-      });
+      return html5QrCode.stop().catch(function (err) { console.error("Erro a parar a câmara", err); });
     }
     return Promise.resolve();
   }
@@ -669,9 +1069,6 @@
           Html5QrcodeSupportedFormats.QR_CODE
         ],
         verbose: false,
-        // Em browsers com deteção nativa (ex. Chrome/Android), usa-a em vez
-        // do zxing-js — é mais tolerante a ângulo/curvatura da embalagem.
-        // Sem efeito no Safari/iOS, que não expõe deteção nativa à web.
         experimentalFeatures: { useBarCodeDetectorIfSupported: true }
       });
     }
@@ -679,41 +1076,25 @@
   }
 
   async function startScanner() {
-    var statusEl = document.getElementById("scan-status");
-
-    if (!window.isSecureContext) {
-      statusEl.textContent = "A câmara só funciona em ligação HTTPS — introduz o código manualmente.";
-      return;
-    }
-    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-      statusEl.textContent = "Câmara não disponível neste navegador — introduz o código manualmente.";
-      return;
-    }
-    if (typeof Html5Qrcode === "undefined") {
-      statusEl.textContent = "Leitor de código de barras não carregou — verifica a ligação à internet ou introduz o código manualmente.";
-      return;
-    }
+    var statusEl = $("scan-status");
+    if (!window.isSecureContext) { statusEl.textContent = "A câmara só funciona em ligação HTTPS — introduz o código manualmente."; return; }
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { statusEl.textContent = "Câmara não disponível neste navegador — introduz o código manualmente."; return; }
+    if (typeof Html5Qrcode === "undefined") { statusEl.textContent = "Leitor de código de barras não carregou — verifica a ligação à internet ou introduz o código manualmente."; return; }
 
     try {
       ensureHtml5QrCode();
-
-      document.getElementById("scanner-wrap").style.display = "block";
+      $("scanner-wrap").style.display = "block";
       statusEl.textContent = "Aponta a câmara para o código de barras...";
 
       await html5QrCode.start(
         { facingMode: "environment" },
         {
           fps: 15,
-          // Caixa de captura larga e baixa (proporcional ao ecrã), a imitar a
-          // forma de um código de barras — dá mais margem de alinhamento do
-          // que uma caixa pequena fixa, sem obrigar a aproximar tanto a câmara.
           qrbox: function (viewfinderWidth, viewfinderHeight) {
             var width = Math.floor(viewfinderWidth * 0.85);
             var height = Math.floor(Math.min(viewfinderHeight * 0.42, width * 0.55));
             return { width: width, height: height };
           },
-          // Pede resolução mais alta à câmara: mais pixels no recorte ajudam
-          // a descodificar códigos mais pequenos/afastados.
           videoConstraints: {
             facingMode: "environment",
             width: { ideal: 1920 },
@@ -726,10 +1107,6 @@
       );
       scannerRunning = true;
 
-      // Enquanto não se lê nenhuma barra válida, o callback de erro do
-      // html5-qrcode dispara a cada frame (é normal, não é falha) — por
-      // isso a pista de "está com dificuldade" é dada por tempo decorrido,
-      // não por essas falhas frame-a-frame.
       var scanStartedAt = Date.now();
       scanHintTimer = setInterval(function () {
         var elapsed = Date.now() - scanStartedAt;
@@ -742,13 +1119,13 @@
     } catch (err) {
       console.error(err);
       statusEl.textContent = "Não foi possível aceder à câmara — verifica as permissões ou introduz o código manualmente.";
-      document.getElementById("scanner-wrap").style.display = "none";
+      $("scanner-wrap").style.display = "none";
     }
   }
 
   function onBarcodeDetected(code, statusEl) {
     stopScanner();
-    document.getElementById("f-barcode").value = code;
+    $("f-barcode").value = code;
     lastLookedUpBarcode = code;
     statusEl.textContent = "Código lido: " + code + " — a procurar produto...";
     lookupProduct(code, statusEl);
@@ -761,41 +1138,45 @@
       if (data && data.status === 1 && data.product) {
         var p = data.product;
         var name = p.product_name_pt || p.product_name || p.generic_name || "";
-        if (name) document.getElementById("f-name").value = name;
-        if (p.image_front_small_url || p.image_url) {
-          var img = document.getElementById("f-image");
-          img.src = p.image_front_small_url || p.image_url;
-          img.style.display = "block";
+        var genericName = p.generic_name_pt || p.generic_name || "";
+        var imageUrl = p.image_front_small_url || p.image_url || "";
+        currentProductMeta = {
+          generic_name: genericName || null,
+          category_tags: p.categories_tags || [],
+          quantity_text: p.quantity || null,
+          image_url: imageUrl || null,
+          source: "openfoodfacts"
+        };
+        if (name) $("f-name").value = name;
+        if (imageUrl) {
+          $("f-image").src = imageUrl;
+          $("f-image").style.display = "block";
         }
         statusEl.textContent = name ? "Produto encontrado: " + name : "Produto encontrado, mas sem nome — preenche manualmente.";
       } else {
+        currentProductMeta = { generic_name: null, category_tags: [], quantity_text: null, image_url: null, source: "manual" };
         statusEl.textContent = "Produto não encontrado na base de dados — preenche o nome manualmente.";
       }
     } catch (err) {
       console.error(err);
+      currentProductMeta = { generic_name: null, category_tags: [], quantity_text: null, image_url: null, source: "manual" };
       statusEl.textContent = "Sem ligação para procurar o produto — preenche o nome manualmente.";
     }
-    document.getElementById("f-name").focus();
+    $("f-name").focus();
   }
 
-  document.getElementById("scan-btn").onclick = startScanner;
+  $("scan-btn").onclick = startScanner;
 
-  // Modo foto: abre a câmara nativa do dispositivo (melhor foco/qualidade
-  // que o preview de vídeo do browser, e a única via viável no Safari/iOS,
-  // que não tem a API ImageCapture) e decodifica a foto tirada.
-  document.getElementById("photo-btn").onclick = async function () {
+  $("photo-btn").onclick = async function () {
     await stopScanner();
-    document.getElementById("photo-input").click();
+    $("photo-input").click();
   };
-
-  document.getElementById("photo-input").addEventListener("change", async function (e) {
+  $("photo-input").addEventListener("change", async function (e) {
     var file = e.target.files && e.target.files[0];
     e.target.value = "";
     if (!file) return;
-
-    var statusEl = document.getElementById("scan-status");
+    var statusEl = $("scan-status");
     statusEl.textContent = "A processar foto...";
-
     try {
       var qrCode = ensureHtml5QrCode();
       var decodedText = await qrCode.scanFile(file, false);
@@ -806,7 +1187,23 @@
     }
   });
 
-  render();
+  // ============================================================
+  // Arranque
+  // ============================================================
+  if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.register("sw.js").catch(function (err) {
+      console.error("Falha a registar service worker", err);
+    });
+  }
+
+  sb.auth.getSession().then(function (result) {
+    session = result.data.session;
+    if (session) {
+      boot();
+    } else {
+      showScreen("auth");
+    }
+  });
 })();
 </script>
 
