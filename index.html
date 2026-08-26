@@ -559,7 +559,13 @@
       var s = data.session;
       if (!s || !s.access_token) return "[debug] sem sessão/access_token no cliente";
       var payload = JSON.parse(atob(s.access_token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/")));
-      return "[debug] sub=" + payload.sub + " role=" + payload.role + " exp=" + new Date(payload.exp * 1000).toISOString();
+      var box = document.createElement("input");
+      box.value = s.access_token;
+      box.readOnly = true;
+      box.style.cssText = "width:100%; font-size:11px; padding:8px; margin-top:6px; border:1px solid var(--border); border-radius:8px;";
+      box.onclick = function () { this.select(); };
+      $("hh-status").after(box);
+      return "[debug] sub=" + payload.sub + " role=" + payload.role + " exp=" + new Date(payload.exp * 1000).toISOString() + " — toca na caixa abaixo, seleciona tudo e copia o token";
     } catch (e) {
       return "[debug] erro a decodificar sessão: " + e.message;
     }
