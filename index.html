@@ -348,6 +348,10 @@
       </div>
     </div>
     <div class="field">
+      <label>Data de validade</label>
+      <input id="f-expiry" type="date">
+    </div>
+    <div class="field">
       <label>Aviso de stock baixo (opcional)</label>
       <input id="f-lowstock" type="number" inputmode="numeric" min="0" placeholder="ex. 1">
     </div>
@@ -390,6 +394,26 @@
 
   function uid() {
     return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+  }
+
+  // Datas de validade tratadas como strings "YYYY-MM-DD" (formato nativo do
+  // <input type=date>) e comparadas lexicograficamente — evita conversões
+  // para Date/UTC, que podiam desviar o dia consoante o fuso horário.
+  function todayISODate() {
+    var d = new Date();
+    return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+  }
+
+  function addDaysISO(baseISO, days) {
+    var parts = baseISO.split("-").map(Number);
+    var d = new Date(parts[0], parts[1] - 1, parts[2]);
+    d.setDate(d.getDate() + days);
+    return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+  }
+
+  function formatDatePt(iso) {
+    var parts = iso.split("-");
+    return parts[2] + "/" + parts[1] + "/" + parts[0];
   }
 
   function toast(msg) {
@@ -439,8 +463,25 @@
 
       var meta = document.createElement("div");
       var isLow = it.lowStock != null && it.qty <= it.lowStock;
-      meta.className = "item-meta" + (isLow ? " low" : "");
-      meta.textContent = isLow ? "Stock baixo · " + it.barcode : it.barcode;
+
+      var expiryText = "";
+      var expiryWarn = false;
+      if (it.expiryDate) {
+        var today = todayISODate();
+        var soonCutoff = addDaysISO(today, 3);
+        var isExpired = it.expiryDate < today;
+        var isSoon = !isExpired && it.expiryDate <= soonCutoff;
+        expiryWarn = isExpired || isSoon;
+        expiryText = (isExpired ? "Expirado " : isSoon ? "Expira em breve " : "Val. ") + formatDatePt(it.expiryDate);
+      }
+
+      var metaParts = [];
+      if (isLow) metaParts.push("Stock baixo");
+      if (expiryText) metaParts.push(expiryText);
+      metaParts.push(it.barcode);
+
+      meta.className = "item-meta" + (isLow || expiryWarn ? " low" : "");
+      meta.textContent = metaParts.filter(Boolean).join(" · ");
       info.appendChild(meta);
       row.appendChild(info);
 
@@ -522,6 +563,7 @@
     document.getElementById("f-barcode").value = "";
     document.getElementById("f-name").value = "";
     document.getElementById("f-qty").value = "1";
+    document.getElementById("f-expiry").value = "";
     document.getElementById("f-lowstock").value = "";
     document.getElementById("f-loc").value = currentLoc;
     document.getElementById("f-image").style.display = "none";
@@ -546,12 +588,18 @@
     var name = document.getElementById("f-name").value.trim();
     var qty = parseInt(document.getElementById("f-qty").value, 10);
     var loc = document.getElementById("f-loc").value;
+    var expiryDate = document.getElementById("f-expiry").value;
     var lowRaw = document.getElementById("f-lowstock").value.trim();
     var lowStock = lowRaw === "" ? null : parseInt(lowRaw, 10);
     var image = document.getElementById("f-image").src || "";
 
     if (!name) {
       toast("Indica o nome do produto");
+      return;
+    }
+    if (!expiryDate) {
+      toast("Indica a data de validade");
+      document.getElementById("f-expiry").focus();
       return;
     }
     if (isNaN(qty) || qty < 0) qty = 0;
@@ -563,6 +611,7 @@
     if (existing) {
       existing.qty += qty;
       existing.name = name;
+      existing.expiryDate = expiryDate;
       if (image) existing.image = image;
       if (lowStock != null) existing.lowStock = lowStock;
       toast("Quantidade atualizada");
@@ -573,6 +622,7 @@
         name: name,
         qty: qty,
         loc: loc,
+        expiryDate: expiryDate,
         lowStock: lowStock,
         image: image,
         addedAt: Date.now()

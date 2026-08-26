@@ -21,6 +21,10 @@ inventário da dispensa e do frigorífico em casa.
 - Inventário separado por **Dispensa** e **Frigorífico**, com contador de
   quantidade (+/–) por produto.
 - Aviso visual de stock baixo (limite configurável por produto).
+- **Data de validade obrigatória** ao adicionar um produto — mesmo que o
+  nome/imagem venham automaticamente da Open Food Facts, a data tem de ser
+  indicada antes de guardar. A lista mostra "Expirado" ou "Expira em breve"
+  (nos 3 dias seguintes) a vermelho.
 - Pesquisa por nome ou código de barras.
 - Tudo guardado localmente no browser (`localStorage`) — não há backend nem conta.
 
@@ -40,4 +44,6 @@ ecrã principal como PWA-like shortcut.
   manualmente.
 - Sem sincronização entre dispositivos — o inventário fica guardado apenas no
   browser onde foi criado.
-- Sem datas de validade (ainda).
+- Um produto guarda uma única data de validade (a mais recente introduzida);
+  não há suporte a lotes/validades diferentes para o mesmo produto no mesmo
+  local.
