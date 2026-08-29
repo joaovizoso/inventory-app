@@ -91,6 +91,14 @@
     justify-content: space-between;
     margin-bottom: 12px;
   }
+  #test-mode-banner {
+    background: #b5443a;
+    color: white;
+    font-size: 12px;
+    font-weight: 700;
+    text-align: center;
+    padding: 8px 12px;
+  }
   h1 { font-size: 20px; margin: 0; font-weight: 700; }
   .icon-btn {
     width: 36px;
@@ -303,6 +311,7 @@
 
 <!-- ================= APP ================= -->
 <div class="hidden" id="app-screen">
+  <div class="hidden" id="test-mode-banner">⚠️ MODO DE TESTE — SEM LOGIN — qualquer pessoa com este link vê/edita este inventário</div>
   <header>
     <div class="header-row">
       <h1 id="app-title">🧺 Inventário</h1>
@@ -469,6 +478,11 @@
   var SUPABASE_ANON_KEY = "sb_publishable_VZhD5-AGdG5S7YTnOigPXA_LWuP-hNA";
   var sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
+  // ⚠️ TEMPORÁRIO — bypass de login enquanto a autenticação não está
+  // resolvida. Ver supabase/migrations/0006_temp_anon_test_access.sql.
+  // Reverter (código + migração 0007) assim que possível.
+  var TEST_MODE_HOUSEHOLD_ID = "4f550919-7df4-4b4e-9cf2-0371a134a62b";
+
   // ============================================================
   // Estado
   // ============================================================
@@ -585,11 +599,21 @@
     session = newSession;
     if (session) {
       boot();
+    } else if (TEST_MODE_HOUSEHOLD_ID) {
+      enterTestMode();
     } else {
       currentHousehold = null;
       showScreen("auth");
     }
   });
+
+  // ⚠️ TEMPORÁRIO — ver nota junto a TEST_MODE_HOUSEHOLD_ID.
+  async function enterTestMode() {
+    currentHousehold = { id: TEST_MODE_HOUSEHOLD_ID, name: "Casa (modo de teste)", invite_code: "" };
+    $("test-mode-banner").classList.remove("hidden");
+    showScreen("app");
+    await refreshAll();
+  }
 
   // ============================================================
   // Household
@@ -709,7 +733,7 @@
       await sb.from("inventory_events").insert({
         inventory_item_id: itemId,
         household_id: currentHousehold.id,
-        user_id: session.user.id,
+        user_id: session ? session.user.id : null,
         event_type: eventType,
         delta: delta
       });
@@ -1150,7 +1174,7 @@
           category_tags: currentProductMeta ? currentProductMeta.category_tags : [],
           quantity_text: currentProductMeta ? currentProductMeta.quantity_text : null,
           source: currentProductMeta ? currentProductMeta.source : "manual",
-          created_by: session.user.id
+          created_by: session ? session.user.id : null
         }, { onConflict: "barcode" });
       }
 
@@ -1168,7 +1192,7 @@
         qty: qty,
         expiry_date: expiryDate,
         low_stock: lowStock,
-        added_by: session.user.id
+        added_by: session ? session.user.id : null
       }).select().single();
       if (insertErr) throw insertErr;
       logEvent(inserted.id, "added", qty);
@@ -1210,7 +1234,7 @@
       household_id: currentHousehold.id,
       name: name,
       qty_wanted: qty,
-      added_by: session.user.id
+      added_by: session ? session.user.id : null
     }).select().single();
     if (error) { console.error(error); toast("Erro ao adicionar"); return; }
     shoppingItems.push(data);
@@ -1384,6 +1408,8 @@
     session = result.data.session;
     if (session) {
       boot();
+    } else if (TEST_MODE_HOUSEHOLD_ID) {
+      enterTestMode();
     } else {
       showScreen("auth");
     }
