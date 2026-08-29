@@ -28,7 +28,11 @@ puro, sem build tools), backend em [Supabase](https://supabase.com) (Postgres
   (`products`), para que registar manualmente um produto desconhecido
   beneficie todos os utilizadores da app.
 - Inventário separado por **Dispensa**, **Frigorífico** e **Congelador**,
-  com contador de quantidade (+/–) por produto.
+  com contador de quantidade (+/–) por produto. **Mover** um item entre
+  locais (botão ⇄) sem o recriar. Cada adição fica sempre como uma **linha
+  nova** (um lote próprio) — nunca funde com uma linha existente do mesmo
+  código de barras/local, para não perder o rasto de lotes com validades
+  diferentes (ex. leite comprado em dias diferentes fica em duas linhas).
 - Aviso visual de stock baixo (limite configurável por produto).
 - **Data de validade obrigatória** ao adicionar um produto — mesmo que os
   dados venham automaticamente da Open Food Facts. A lista mostra "Expirado"
@@ -74,5 +78,6 @@ ordem no SQL Editor do projeto Supabase (`0001_init.sql`, depois
   `index.html` localmente (`file://`) nem por `http://` simples.
 - Assume-se uma casa por utilizador (a primeira encontrada); não há UI para
   gerir pertencer a várias casas em simultâneo.
-- Sem edição de um item já criado além de quantidade — remover e voltar a
-  adicionar para corrigir nome/categoria/validade.
+- Sem edição de um item já criado além de quantidade e local — decisão
+  deliberada (ver commit), não uma limitação a corrigir: corrigir um erro
+  é remover e voltar a adicionar.

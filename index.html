@@ -1129,46 +1129,25 @@
         }, { onConflict: "barcode" });
       }
 
-      var existing = null;
-      if (barcode) {
-        var { data: existingData } = await sb
-          .from("inventory_items")
-          .select("*")
-          .eq("household_id", currentHousehold.id)
-          .eq("barcode", barcode)
-          .eq("loc", loc)
-          .maybeSingle();
-        existing = existingData;
-      }
-
-      if (existing) {
-        var newQty = existing.qty + qty;
-        await sb.from("inventory_items").update({
-          qty: newQty,
-          name: name,
-          expiry_date: expiryDate,
-          low_stock: lowStock,
-          photo_url: photoUrl || existing.photo_url
-        }).eq("id", existing.id);
-        logEvent(existing.id, "adjusted", qty);
-        toast("Quantidade atualizada");
-      } else {
-        var { data: inserted, error: insertErr } = await sb.from("inventory_items").insert({
-          household_id: currentHousehold.id,
-          barcode: barcode || null,
-          name: name,
-          category: category,
-          loc: loc,
-          photo_url: photoUrl || null,
-          qty: qty,
-          expiry_date: expiryDate,
-          low_stock: lowStock,
-          added_by: session.user.id
-        }).select().single();
-        if (insertErr) throw insertErr;
-        logEvent(inserted.id, "added", qty);
-        toast("Produto adicionado");
-      }
+      // Cada adição fica sempre como uma linha nova (um lote próprio, com a
+      // sua própria validade e quantidade) — nunca funde com uma linha
+      // existente do mesmo barcode+local. Fundir perderia o rasto de lotes
+      // com validades diferentes (ex. leite comprado em dias diferentes).
+      var { data: inserted, error: insertErr } = await sb.from("inventory_items").insert({
+        household_id: currentHousehold.id,
+        barcode: barcode || null,
+        name: name,
+        category: category,
+        loc: loc,
+        photo_url: photoUrl || null,
+        qty: qty,
+        expiry_date: expiryDate,
+        low_stock: lowStock,
+        added_by: session.user.id
+      }).select().single();
+      if (insertErr) throw insertErr;
+      logEvent(inserted.id, "added", qty);
+      toast("Produto adicionado");
 
       currentLoc = loc;
       currentView = "inventory";
