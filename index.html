@@ -165,6 +165,23 @@
   }
   .remove-btn { background: none; border: none; color: var(--muted); font-size: 18px; padding: 4px 6px; cursor: pointer; }
   .move-btn { background: none; border: none; color: var(--accent); font-size: 17px; padding: 4px 6px; cursor: pointer; }
+  .item-group {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    margin-bottom: 10px;
+    overflow: hidden;
+  }
+  .item-group-header {
+    display: flex; align-items: center; gap: 12px;
+    padding: 12px; border-bottom: 1px solid var(--border);
+  }
+  .item-group-batches { padding: 0 8px; }
+  .item.item-compact {
+    background: none; border: none; border-radius: 0;
+    padding: 8px 4px; margin-bottom: 0;
+  }
+  .item.item-compact + .item.item-compact { border-top: 1px dashed var(--border); }
   .checkbox-btn {
     width: 26px; height: 26px; border-radius: 50%;
     border: 2px solid var(--border); background: var(--card);
@@ -712,6 +729,140 @@
     }
   }
 
+  function itemExpiryStatus(it) {
+    if (!it.expiry_date) return { text: "", warn: false };
+    var today = todayISODate();
+    var soonCutoff = addDaysISO(today, 3);
+    var isExpired = it.expiry_date < today;
+    var isSoon = !isExpired && it.expiry_date <= soonCutoff;
+    return {
+      text: (isExpired ? "Expirado " : isSoon ? "Expira em breve " : "Val. ") + formatDatePt(it.expiry_date),
+      warn: isExpired || isSoon
+    };
+  }
+
+  // compact=true → linha mais fina, sem foto/nome repetidos, usada dentro
+  // de um grupo de vários lotes do mesmo produto.
+  function buildItemRow(it, compact) {
+    var row = document.createElement("div");
+    row.className = "item" + (compact ? " item-compact" : "");
+
+    if (!compact) {
+      var thumb = document.createElement("img");
+      thumb.className = "item-thumb";
+      var thumbSrc = it.photo_url || "";
+      thumb.src = thumbSrc;
+      thumb.style.visibility = thumbSrc ? "visible" : "hidden";
+      row.appendChild(thumb);
+    }
+
+    var info = document.createElement("div");
+    info.className = "item-info";
+
+    if (!compact) {
+      var name = document.createElement("div");
+      name.className = "item-name";
+      name.textContent = it.name;
+      info.appendChild(name);
+    }
+
+    var isLow = it.low_stock != null && it.qty <= it.low_stock;
+    var expiry = itemExpiryStatus(it);
+
+    var metaParts = [];
+    if (isLow) metaParts.push("Stock baixo");
+    if (expiry.text) metaParts.push(expiry.text);
+    if (!compact && it.barcode) metaParts.push(it.barcode);
+
+    var meta = document.createElement("div");
+    meta.className = "item-meta" + (isLow || expiry.warn ? " low" : "");
+    meta.textContent = metaParts.filter(Boolean).join(" · ");
+    info.appendChild(meta);
+    row.appendChild(info);
+
+    var controls = document.createElement("div");
+    controls.className = "qty-controls";
+
+    var minus = document.createElement("button");
+    minus.className = "qty-btn";
+    minus.textContent = "–";
+    minus.onclick = function () { changeQty(it, -1); };
+    controls.appendChild(minus);
+
+    var qty = document.createElement("div");
+    qty.className = "qty-value";
+    qty.textContent = it.qty;
+    controls.appendChild(qty);
+
+    var plus = document.createElement("button");
+    plus.className = "qty-btn";
+    plus.textContent = "+";
+    plus.onclick = function () { changeQty(it, 1); };
+    controls.appendChild(plus);
+
+    row.appendChild(controls);
+
+    var move = document.createElement("button");
+    move.className = "move-btn";
+    move.textContent = "⇄";
+    move.title = "Mover para outro local";
+    move.onclick = function () { openMoveSheet(it); };
+    row.appendChild(move);
+
+    var remove = document.createElement("button");
+    remove.className = "remove-btn";
+    remove.textContent = "✕";
+    remove.onclick = function () { removeItem(it); };
+    row.appendChild(remove);
+
+    return row;
+  }
+
+  // Um "grupo" é todos os lotes do mesmo produto (mesmo barcode, ou mesmo
+  // nome quando não há barcode) no local atual. Com um só lote, mostra-se
+  // exatamente como antes; com vários, aparece um cabeçalho com o total e
+  // cada lote por baixo, mais fino, ordenado por validade mais próxima.
+  function buildItemGroup(batch) {
+    if (batch.length === 1) return buildItemRow(batch[0], false);
+
+    var wrap = document.createElement("div");
+    wrap.className = "item-group";
+
+    var anyWarn = batch.some(function (it) { return itemExpiryStatus(it).warn; });
+    var totalQty = batch.reduce(function (sum, it) { return sum + it.qty; }, 0);
+
+    var header = document.createElement("div");
+    header.className = "item-group-header";
+
+    var thumb = document.createElement("img");
+    thumb.className = "item-thumb";
+    var thumbSrc = batch[0].photo_url || "";
+    thumb.src = thumbSrc;
+    thumb.style.visibility = thumbSrc ? "visible" : "hidden";
+    header.appendChild(thumb);
+
+    var headerInfo = document.createElement("div");
+    headerInfo.className = "item-info";
+    var headerName = document.createElement("div");
+    headerName.className = "item-name";
+    headerName.textContent = batch[0].name;
+    headerInfo.appendChild(headerName);
+    var headerMeta = document.createElement("div");
+    headerMeta.className = "item-meta" + (anyWarn ? " low" : "");
+    headerMeta.textContent = batch.length + " lotes · " + totalQty + " no total" +
+      (anyWarn ? " · há lotes a expirar" : "");
+    headerInfo.appendChild(headerMeta);
+    header.appendChild(headerInfo);
+    wrap.appendChild(header);
+
+    var batchesWrap = document.createElement("div");
+    batchesWrap.className = "item-group-batches";
+    batch.forEach(function (it) { batchesWrap.appendChild(buildItemRow(it, true)); });
+    wrap.appendChild(batchesWrap);
+
+    return wrap;
+  }
+
   function renderInventory() {
     var list = $("list");
     var empty = $("empty");
@@ -722,7 +873,6 @@
       if (query && it.name.toLowerCase().indexOf(query) === -1 && (it.barcode || "").indexOf(query) === -1) return false;
       return true;
     });
-    filtered.sort(function (a, b) { return a.name.localeCompare(b.name, "pt"); });
 
     list.innerHTML = "";
     if (filtered.length === 0) {
@@ -732,84 +882,24 @@
     }
     empty.classList.add("hidden");
 
+    var groups = {};
+    var order = [];
     filtered.forEach(function (it) {
-      var row = document.createElement("div");
-      row.className = "item";
+      var key = it.barcode || ("name:" + it.name.toLowerCase());
+      if (!groups[key]) { groups[key] = []; order.push(key); }
+      groups[key].push(it);
+    });
 
-      var thumb = document.createElement("img");
-      thumb.className = "item-thumb";
-      var thumbSrc = it.photo_url || "";
-      thumb.src = thumbSrc;
-      thumb.style.visibility = thumbSrc ? "visible" : "hidden";
-      row.appendChild(thumb);
+    order.sort(function (a, b) {
+      return groups[a][0].name.localeCompare(groups[b][0].name, "pt");
+    });
 
-      var info = document.createElement("div");
-      info.className = "item-info";
-      var name = document.createElement("div");
-      name.className = "item-name";
-      name.textContent = it.name;
-      info.appendChild(name);
-
-      var meta = document.createElement("div");
-      var isLow = it.low_stock != null && it.qty <= it.low_stock;
-
-      var expiryText = "";
-      var expiryWarn = false;
-      if (it.expiry_date) {
-        var today = todayISODate();
-        var soonCutoff = addDaysISO(today, 3);
-        var isExpired = it.expiry_date < today;
-        var isSoon = !isExpired && it.expiry_date <= soonCutoff;
-        expiryWarn = isExpired || isSoon;
-        expiryText = (isExpired ? "Expirado " : isSoon ? "Expira em breve " : "Val. ") + formatDatePt(it.expiry_date);
-      }
-
-      var metaParts = [];
-      if (isLow) metaParts.push("Stock baixo");
-      if (expiryText) metaParts.push(expiryText);
-      if (it.barcode) metaParts.push(it.barcode);
-
-      meta.className = "item-meta" + (isLow || expiryWarn ? " low" : "");
-      meta.textContent = metaParts.filter(Boolean).join(" · ");
-      info.appendChild(meta);
-      row.appendChild(info);
-
-      var controls = document.createElement("div");
-      controls.className = "qty-controls";
-
-      var minus = document.createElement("button");
-      minus.className = "qty-btn";
-      minus.textContent = "–";
-      minus.onclick = function () { changeQty(it, -1); };
-      controls.appendChild(minus);
-
-      var qty = document.createElement("div");
-      qty.className = "qty-value";
-      qty.textContent = it.qty;
-      controls.appendChild(qty);
-
-      var plus = document.createElement("button");
-      plus.className = "qty-btn";
-      plus.textContent = "+";
-      plus.onclick = function () { changeQty(it, 1); };
-      controls.appendChild(plus);
-
-      row.appendChild(controls);
-
-      var move = document.createElement("button");
-      move.className = "move-btn";
-      move.textContent = "⇄";
-      move.title = "Mover para outro local";
-      move.onclick = function () { openMoveSheet(it); };
-      row.appendChild(move);
-
-      var remove = document.createElement("button");
-      remove.className = "remove-btn";
-      remove.textContent = "✕";
-      remove.onclick = function () { removeItem(it); };
-      row.appendChild(remove);
-
-      list.appendChild(row);
+    order.forEach(function (key) {
+      var batch = groups[key];
+      batch.sort(function (a, b) {
+        return (a.expiry_date || "9999-99-99").localeCompare(b.expiry_date || "9999-99-99");
+      });
+      list.appendChild(buildItemGroup(batch));
     });
   }
 
