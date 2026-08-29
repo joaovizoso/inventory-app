@@ -1,0 +1,45 @@
+name: Apply Supabase migrations
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "supabase/migrations/**"
+  workflow_dispatch: {}
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install postgresql-client
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+
+      - name: Apply pending migrations
+        env:
+          DATABASE_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "${DATABASE_URL:-}" ]; then
+            echo "::error::SUPABASE_DB_URL secret is not set (Settings > Secrets and variables > Actions)."
+            exit 1
+          fi
+
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -c \
+            "create table if not exists _migrations_applied (filename text primary key, applied_at timestamptz not null default now());"
+
+          shopt -s nullglob
+          for f in $(ls supabase/migrations/*.sql | sort); do
+            name=$(basename "$f")
+            already=$(psql "$DATABASE_URL" -tAc "select 1 from _migrations_applied where filename = '$name';")
+            if [ "$already" = "1" ]; then
+              echo "Já aplicada, a saltar: $name"
+              continue
+            fi
+            echo "A aplicar: $name"
+            psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f "$f"
+            psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -c \
+              "insert into _migrations_applied (filename) values ('$name');"
+          done
