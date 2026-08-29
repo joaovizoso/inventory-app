@@ -246,8 +246,16 @@
       <label>Email</label>
       <input id="auth-email" type="email" inputmode="email" placeholder="tu@exemplo.com" autocomplete="email">
     </div>
-    <button class="btn btn-primary" id="auth-send-btn">Enviar link de acesso</button>
+    <button class="btn btn-primary" id="auth-send-btn">Enviar código de acesso</button>
     <div class="status-msg" id="auth-status"></div>
+
+    <div id="auth-code-block" class="hidden">
+      <div class="field" style="margin-top:18px;">
+        <label>Código de 6 dígitos (também está no email — se o link não funcionar, usa este)</label>
+        <input id="auth-code" inputmode="numeric" maxlength="6" placeholder="000000">
+      </div>
+      <button class="btn btn-secondary" id="auth-verify-btn">Confirmar código</button>
+    </div>
   </div>
 </div>
 
@@ -502,11 +510,45 @@
     });
     if (error) {
       statusEl.className = "status-msg error";
-      statusEl.textContent = "Não foi possível enviar o link: " + error.message;
+      statusEl.textContent = "Não foi possível enviar o código: " + error.message;
     } else {
-      statusEl.textContent = "Verifica o teu email — enviámos um link de acesso.";
+      statusEl.textContent = "Verifica o teu email — chegou lá um link e um código de 6 dígitos.";
+      $("auth-code-block").classList.remove("hidden");
+      $("auth-code").focus();
     }
   };
+
+  $("auth-verify-btn").onclick = async function () {
+    var email = $("auth-email").value.trim();
+    var code = $("auth-code").value.trim();
+    var statusEl = $("auth-status");
+    statusEl.className = "status-msg";
+    if (!email || !code) { statusEl.textContent = "Indica o email e o código."; return; }
+    statusEl.textContent = "A confirmar...";
+    var { error } = await sb.auth.verifyOtp({ email: email, token: code, type: "email" });
+    if (error) {
+      statusEl.className = "status-msg error";
+      statusEl.textContent = "Código inválido ou expirado: " + error.message;
+    }
+    // Em caso de sucesso, onAuthStateChange trata da navegação sozinho.
+  };
+
+  // Se o link mágico falhar (ex. já usado — o Outlook/Hotmail costuma
+  // "clicar" links de emails automaticamente para os verificar, gastando
+  // links de utilização única antes do próprio utilizador clicar), o
+  // Supabase volta com o erro na fragment da URL em vez de uma sessão.
+  // Sem isto, a app ficava silenciosamente no ecrã de login sem explicar.
+  (function surfaceAuthUrlError() {
+    var hash = window.location.hash;
+    if (!hash || hash.indexOf("error") === -1) return;
+    var params = new URLSearchParams(hash.slice(1));
+    var desc = params.get("error_description");
+    if (desc) {
+      $("auth-status").className = "status-msg error";
+      $("auth-status").textContent = decodeURIComponent(desc.replace(/\+/g, " ")) + " — tenta o código de 6 dígitos em vez do link.";
+    }
+    history.replaceState(null, "", window.location.pathname + window.location.search);
+  })();
 
   function signOut() {
     sb.auth.signOut();
