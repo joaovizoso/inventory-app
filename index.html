@@ -164,6 +164,7 @@
     object-fit: cover; background: var(--border); flex-shrink: 0;
   }
   .remove-btn { background: none; border: none; color: var(--muted); font-size: 18px; padding: 4px 6px; cursor: pointer; }
+  .move-btn { background: none; border: none; color: var(--accent); font-size: 17px; padding: 4px 6px; cursor: pointer; }
   .checkbox-btn {
     width: 26px; height: 26px; border-radius: 50%;
     border: 2px solid var(--border); background: var(--card);
@@ -416,6 +417,15 @@
     </div>
     <button class="btn btn-secondary" id="hh-signout-btn-2">Sair da conta</button>
     <button class="btn btn-secondary" id="hh-info-close-btn">Fechar</button>
+  </div>
+</div>
+
+<!-- ================= MOVE ITEM SHEET ================= -->
+<div class="sheet-backdrop" id="move-sheet-backdrop">
+  <div class="sheet">
+    <h2>Mover <span id="move-item-name"></span></h2>
+    <div id="move-options"></div>
+    <button class="btn btn-secondary" id="move-cancel-btn">Cancelar</button>
   </div>
 </div>
 
@@ -851,6 +861,13 @@
 
       row.appendChild(controls);
 
+      var move = document.createElement("button");
+      move.className = "move-btn";
+      move.textContent = "⇄";
+      move.title = "Mover para outro local";
+      move.onclick = function () { openMoveSheet(it); };
+      row.appendChild(move);
+
       var remove = document.createElement("button");
       remove.className = "remove-btn";
       remove.textContent = "✕";
@@ -922,6 +939,50 @@
     var { error } = await sb.from("inventory_items").delete().eq("id", it.id);
     if (error) { console.error(error); toast("Erro ao remover"); }
     logEvent(it.id, "deleted", -it.qty);
+  }
+
+  // Mover um item entre locais sem o recriar — mantém barcode, nome,
+  // categoria, foto, validade e aviso de stock baixo intactos.
+  var LOCATIONS = [
+    { key: "dispensa", label: "Dispensa" },
+    { key: "frigorifico", label: "Frigorífico" },
+    { key: "congelador", label: "Congelador" }
+  ];
+  var moveSheetBackdrop = $("move-sheet-backdrop");
+
+  function openMoveSheet(it) {
+    $("move-item-name").textContent = "“" + it.name + "”";
+    var container = $("move-options");
+    container.innerHTML = "";
+    LOCATIONS.filter(function (l) { return l.key !== it.loc; }).forEach(function (l) {
+      var btn = document.createElement("button");
+      btn.className = "btn btn-secondary";
+      btn.textContent = "Mover para " + l.label;
+      btn.onclick = function () { moveItem(it, l.key); };
+      container.appendChild(btn);
+    });
+    moveSheetBackdrop.classList.add("open");
+  }
+  $("move-cancel-btn").onclick = function () { moveSheetBackdrop.classList.remove("open"); };
+  moveSheetBackdrop.addEventListener("click", function (e) {
+    if (e.target === moveSheetBackdrop) moveSheetBackdrop.classList.remove("open");
+  });
+
+  async function moveItem(it, newLoc) {
+    var oldLoc = it.loc;
+    it.loc = newLoc; // otimista
+    moveSheetBackdrop.classList.remove("open");
+    renderInventory();
+    var { error } = await sb.from("inventory_items").update({ loc: newLoc }).eq("id", it.id);
+    if (error) {
+      console.error(error);
+      it.loc = oldLoc;
+      renderInventory();
+      toast("Erro ao mover — tenta outra vez");
+      return;
+    }
+    var label = LOCATIONS.filter(function (l) { return l.key === newLoc; })[0].label;
+    toast("Movido para " + label);
   }
 
   async function toggleShoppingItem(it) {
