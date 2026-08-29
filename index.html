@@ -1118,13 +1118,23 @@
   $("cancel-btn").onclick = closeSheet;
   backdrop.addEventListener("click", function (e) { if (e.target === backdrop) closeSheet(); });
 
-  $("f-barcode").addEventListener("blur", function () {
-    var code = this.value.trim();
+  function lookupBarcodeFieldIfChanged() {
+    var code = $("f-barcode").value.trim();
     if (!code || code === lastLookedUpBarcode) return;
     lastLookedUpBarcode = code;
     var statusEl = $("scan-status");
     statusEl.textContent = "A procurar produto...";
     lookupProduct(code, statusEl);
+  }
+  $("f-barcode").addEventListener("blur", lookupBarcodeFieldIfChanged);
+  // Leitores de código de barras USB/Bluetooth (emulam teclado) enviam
+  // normalmente Enter a seguir aos dígitos, sem tirar o foco do campo —
+  // sem isto, a pesquisa só disparava ao mudar de campo manualmente.
+  $("f-barcode").addEventListener("keydown", function (e) {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      lookupBarcodeFieldIfChanged();
+    }
   });
 
   $("manual-photo-btn").onclick = function () { $("manual-photo-input").click(); };
