@@ -619,7 +619,13 @@
     statusEl.className = "status-msg";
     if (!name) { statusEl.textContent = "Indica um nome para a casa."; return; }
     statusEl.textContent = "A criar...";
-    var { data, error } = await sb.from("households").insert({ name: name }).select().single();
+    // Sem .select() de propósito: pedir a linha de volta no mesmo INSERT
+    // (RETURNING) obriga a política de SELECT (is_household_member) a já
+    // estar satisfeita, mas isso só acontece depois do trigger
+    // on_household_created correr — por isso falhava sempre. Em vez disso,
+    // inserimos e depois vamos buscar a casa através da associação que o
+    // trigger já criou entretanto (mesmo caminho do boot() normal).
+    var { error } = await sb.from("households").insert({ name: name });
     if (error) {
       statusEl.className = "status-msg error";
       var dbg = await debugAuthInfo();
@@ -627,9 +633,7 @@
       console.error(error, dbg);
       return;
     }
-    currentHousehold = data;
-    showScreen("app");
-    await refreshAll();
+    await boot();
   };
 
   $("hh-join-btn").onclick = async function () {
