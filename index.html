@@ -1353,6 +1353,12 @@
     if (!file) return;
     var statusEl = $("scan-status");
     statusEl.textContent = "A processar foto...";
+    // O contentor onde o html5-qrcode está montado fica escondido
+    // (display:none) fora do modo "ao vivo" — se a biblioteca usar as
+    // dimensões desse contentor para o canvas de decode, um contentor
+    // escondido (0x0) faz o scanFile falhar sempre, independentemente da
+    // qualidade da foto. Torna-se visível só durante o processamento.
+    $("scanner-wrap").style.display = "block";
     try {
       var qrCode = ensureHtml5QrCode();
       var decodedText = await qrCode.scanFile(file, false);
@@ -1360,6 +1366,8 @@
     } catch (err) {
       console.error(err);
       statusEl.textContent = "Não consegui ler o código nessa foto — tenta outra, mais próxima, bem iluminada e com o código o mais direito possível, ou introduz o código manualmente.";
+    } finally {
+      $("scanner-wrap").style.display = "none";
     }
   });
 
