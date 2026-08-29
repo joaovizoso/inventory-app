@@ -577,21 +577,20 @@
 
       // Pedido manual, fora da biblioteca do Supabase, com os mesmos headers
       // que ela deveria estar a enviar — para ver a resposta em bruto do servidor.
-      var rawRes = await fetch(SUPABASE_URL + "/rest/v1/households", {
+      var rawRes = await fetch(SUPABASE_URL + "/rest/v1/rpc/debug_jwt", {
         method: "POST",
         headers: {
           "apikey": SUPABASE_ANON_KEY,
           "Authorization": "Bearer " + s.access_token,
-          "Content-Type": "application/json",
-          "Prefer": "return=representation"
+          "Content-Type": "application/json"
         },
-        body: JSON.stringify({ name: "[teste diagnóstico]" })
+        body: "{}"
       });
       var rawText = await rawRes.text();
 
       var box = document.createElement("textarea");
-      box.value = "payload: " + JSON.stringify(payload) +
-        "\n\nfetch manual — status " + rawRes.status + ":\n" + rawText;
+      box.value = "token header/payload (sub): " + payload.sub +
+        "\n\ndebug_jwt() no servidor — status " + rawRes.status + ":\n" + rawText;
       box.readOnly = true;
       box.style.cssText = "width:100%; height:160px; font-size:11px; padding:8px; margin-top:6px; border:1px solid var(--border); border-radius:8px;";
       box.onclick = function () { this.select(); };
