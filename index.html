@@ -242,6 +242,7 @@
   }
   #scanner-wrap { position: relative; display: none; border-radius: 12px; overflow: hidden; margin-bottom: 14px; background: black; }
   #scanner-video-container video { width: 100%; display: block; max-height: 260px; object-fit: cover; }
+  #scanner-video-container canvas { width: 100% !important; height: auto !important; max-height: 260px; display: block; }
   #scanner-frame {
     position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
     width: 85%; height: 42%; border: 2px solid #ffffffaa; border-radius: 10px; pointer-events: none;
@@ -1377,21 +1378,20 @@
     if (!file) return;
     var statusEl = $("scan-status");
     statusEl.textContent = "A processar foto...";
-    // O contentor onde o html5-qrcode está montado fica escondido
-    // (display:none) fora do modo "ao vivo" — se a biblioteca usar as
-    // dimensões desse contentor para o canvas de decode, um contentor
-    // escondido (0x0) faz o scanFile falhar sempre, independentemente da
-    // qualidade da foto. Torna-se visível só durante o processamento.
     $("scanner-wrap").style.display = "block";
     try {
       var qrCode = ensureHtml5QrCode();
-      var decodedText = await qrCode.scanFile(file, false);
+      // showImage=true: mostra a própria foto tirada dentro do contentor —
+      // sem isto não havia nenhuma forma de veres o que foi capturado,
+      // mesmo quando a leitura falhava, para perceberes se o problema é a
+      // foto (desfocada/cortada) ou só a descodificação.
+      var decodedText = await qrCode.scanFile(file, true);
       onBarcodeDetected(decodedText, statusEl);
     } catch (err) {
       console.error(err);
-      statusEl.textContent = "Não consegui ler o código nessa foto — tenta outra, mais próxima, bem iluminada e com o código o mais direito possível, ou introduz o código manualmente.";
-    } finally {
-      $("scanner-wrap").style.display = "none";
+      // Deixa o contentor visível (com a foto tirada lá dentro) para
+      // poderes avaliar a qualidade da captura, em vez de esconder tudo.
+      statusEl.textContent = "Não consegui ler o código nessa foto — vê a foto abaixo: está o código bem enquadrado, direito e nítido? Tenta outra, ou introduz o código manualmente.";
     }
   });
 
