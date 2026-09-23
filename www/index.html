@@ -1286,8 +1286,50 @@
     return html5QrCode;
   }
 
+  // Dentro da app nativa (Capacitor + plugin ML Kit) a leitura é feita pelo
+  // motor de visão do próprio iOS, muito mais tolerante a ângulo/reflexo/
+  // curvatura do que o zxing-js usado no browser. Na PWA normal (Safari)
+  // isto não existe e cai sempre para o caminho html5-qrcode de sempre.
+  // ⚠️ Ainda não testado num dispositivo real — a API exata do plugin
+  // (nomes dos métodos, forma da resposta) tem de ser confirmada contra
+  // https://capawesome.io/plugins/mlkit/barcode-scanning/ depois de aberto
+  // no Xcode, já que este ambiente não consegue correr código nativo.
+  function isNativeApp() {
+    return !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
+  }
+
+  async function startNativeScanner(statusEl) {
+    var BarcodeScanner = window.Capacitor.Plugins.BarcodeScanner;
+    try {
+      var perm = await BarcodeScanner.checkPermissions();
+      if (perm.camera !== "granted" && perm.camera !== "limited") {
+        perm = await BarcodeScanner.requestPermissions();
+      }
+      if (perm.camera !== "granted" && perm.camera !== "limited") {
+        statusEl.textContent = "Sem permissão de câmara — ativa-a nas definições do iPhone, ou introduz o código manualmente.";
+        return;
+      }
+      statusEl.textContent = "A abrir a câmara...";
+      var result = await BarcodeScanner.scan();
+      var codes = result && result.barcodes;
+      if (codes && codes.length > 0) {
+        onBarcodeDetected(codes[0].rawValue, statusEl);
+      } else {
+        statusEl.textContent = "Nenhum código lido — tenta outra vez ou introduz manualmente.";
+      }
+    } catch (err) {
+      console.error(err);
+      statusEl.textContent = "Erro no leitor nativo — introduz o código manualmente.";
+    }
+  }
+
   async function startScanner() {
     var statusEl = $("scan-status");
+
+    if (isNativeApp() && window.Capacitor.Plugins.BarcodeScanner) {
+      return startNativeScanner(statusEl);
+    }
+
     if (!window.isSecureContext) { statusEl.textContent = "A câmara só funciona em ligação HTTPS — introduz o código manualmente."; return; }
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { statusEl.textContent = "Câmara não disponível neste navegador — introduz o código manualmente."; return; }
     if (typeof Html5Qrcode === "undefined") { statusEl.textContent = "Leitor de código de barras não carregou — verifica a ligação à internet ou introduz o código manualmente."; return; }

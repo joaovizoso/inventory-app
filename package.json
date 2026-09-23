@@ -1,0 +1,17 @@
+{
+  "name": "inventario-app",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Wrapper Capacitor para a app de inventário — permite scan de código de barras nativo (ML Kit) no iPhone. A PWA em www/ continua a funcionar sozinha, sem depender disto.",
+  "scripts": {
+    "sync": "cap sync"
+  },
+  "dependencies": {
+    "@capacitor/core": "^6.1.2",
+    "@capacitor/ios": "^6.1.2",
+    "@capacitor-mlkit/barcode-scanning": "^6.2.0"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^6.1.2"
+  }
+}

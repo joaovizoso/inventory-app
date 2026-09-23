@@ -2,8 +2,10 @@
 
 App para gerir o inventário da dispensa, frigorífico e congelador de casa,
 partilhada entre as pessoas do mesmo agregado. Frontend estático (HTML/CSS/JS
-puro, sem build tools), backend em [Supabase](https://supabase.com) (Postgres
-+ Auth + Storage).
+puro, sem build tools) em `www/`, backend em [Supabase](https://supabase.com)
+(Postgres + Auth + Storage). Também existe um wrapper nativo iOS (Capacitor,
+em `ios/`) só para ter acesso ao leitor de código de barras nativo (ML Kit) —
+ver secção "App nativa iOS" abaixo.
 
 ## Funcionalidades
 
@@ -19,6 +21,11 @@ puro, sem build tools), backend em [Supabase](https://supabase.com) (Postgres
     códigos que a deteção ao vivo não consegue, e é a única via viável no
     Safari/iOS (a API `ImageCapture` não existe lá).
   Ambas funcionam em qualquer browser moderno desde que servido por HTTPS.
+  Dentro da **app nativa iOS**, a leitura ao vivo usa antes o ML Kit da
+  Apple/Google (via Capacitor) — muito mais tolerante a ângulo, reflexo e
+  curvatura de embalagem do que o zxing-js usado no browser (testámos isso
+  em detalhe: nem crop/rotação/contraste/upscale resolveram uma foto real
+  com reflexo — é um limite da própria plataforma web, não um bug).
 - **Itens sem código de barras** (produtos frescos, tupperwares no
   congelador) — nome livre + categoria + foto opcional tirada pelo
   telemóvel, guardada no Supabase Storage.
@@ -48,13 +55,54 @@ puro, sem build tools), backend em [Supabase](https://supabase.com) (Postgres
 ## Arquitetura
 
 ```
-Frontend estático (GitHub Pages)  →  Supabase (Postgres + Auth + Storage)
-     index.html (Supabase JS via CDN)      RLS por household_id / user_id
+Frontend estático (GitHub Pages, serve www/)  →  Supabase (Postgres + Auth + Storage)
+     www/index.html (Supabase JS via CDN)          RLS por household_id / user_id
 ```
 
 Esquema da base de dados em `supabase/migrations/` — corre os ficheiros por
-ordem no SQL Editor do projeto Supabase (`0001_init.sql`, depois
-`0002_storage.sql`).
+ordem no SQL Editor do projeto Supabase, ou espera pela GitHub Action
+(precisa do secret `SUPABASE_DB_URL`, ver `.github/workflows/supabase-migrate.yml`).
+
+**Estrutura do repositório:**
+- `www/` — a PWA propriamente dita (`index.html`, `manifest.json`, `sw.js`,
+  `icons/`). É isto que o GitHub Pages tem de servir (ver abaixo) e também o
+  conteúdo web que a app nativa embrulha.
+- `ios/` — projeto Xcode gerado pelo Capacitor (`npx cap add ios`). Só serve
+  para dar acesso ao plugin nativo de leitura de código de barras; a PWA em
+  `www/` funciona sozinha sem isto.
+- `supabase/migrations/` — esquema da base de dados, por ordem.
+
+⚠️ **Ação necessária:** como os ficheiros da PWA se mudaram para `www/`, é
+preciso atualizar o GitHub Pages para servir a partir dessa pasta —
+**Settings → Pages → Build and deployment → Source: Deploy from a branch →
+Branch: `main` / `/www`** (em vez de `/ (root)`).
+
+## App nativa iOS (Capacitor + leitor de código de barras nativo)
+
+Só existe para resolver a fiabilidade da leitura de código de barras no
+iPhone (ver acima) — usa o mesmo `www/index.html`, Supabase, tudo. Este
+ambiente de desenvolvimento não tem Xcode, por isso o projeto `ios/` já
+está gerado e commitado, mas os passos finais têm de ser feitos num Mac:
+
+1. Clona o repositório e faz `npm install`.
+2. `cd ios/App && pod install` (precisa do [CocoaPods](https://cocoapods.org/) instalado).
+3. Abre `ios/App/App.xcworkspace` no Xcode (não o `.xcodeproj`).
+4. Em **Signing & Capabilities**, escolhe a tua Apple ID como Team (conta
+   grátis chega para instalar só no teu iPhone — sem os 99$/ano da Apple
+   Developer Program, mas a assinatura expira a cada ~7 dias e é preciso
+   voltar a fazer build pelo Xcode).
+5. Liga o iPhone por USB, escolhe-o como destino, e corre (▶).
+6. Sempre que editares `www/index.html` (ou outro ficheiro em `www/`),
+   corre `npx cap sync ios` na raiz do projeto antes de voltares a fazer
+   build no Xcode — isto copia os ficheiros novos para dentro do projeto
+   nativo.
+
+⚠️ **Ainda por confirmar num dispositivo real** (não consigo testar isto a
+partir deste ambiente): a integração com `@capacitor-mlkit/barcode-scanning`
+em `www/index.html` (função `startNativeScanner`) foi escrita com base na
+documentação do plugin, mas os nomes exatos dos métodos/forma da resposta
+têm de ser verificados contra a [documentação oficial](https://capawesome.io/plugins/mlkit/barcode-scanning/)
+depois de compilado — pode precisar de pequenos ajustes.
 
 ## Configuração necessária no Supabase
 
@@ -64,7 +112,7 @@ ordem no SQL Editor do projeto Supabase (`0001_init.sql`, depois
    para o magic link redirecionar corretamente.
 3. `SUPABASE_URL` e a chave `sb_publishable_...` (segura para o frontend —
    protegida por Row Level Security, não por ser secreta) estão hardcoded
-   no `index.html`.
+   no `www/index.html`.
 
 ## Limitações atuais / próximos passos
 
@@ -75,7 +123,7 @@ ordem no SQL Editor do projeto Supabase (`0001_init.sql`, depois
   não trata eventos `push`) a mostrar a notificação. No iPhone só funciona
   com a app instalada no ecrã principal (iOS 16.4+).
 - A leitura de código de barras exige **HTTPS** — não funciona a abrir
-  `index.html` localmente (`file://`) nem por `http://` simples.
+  `www/index.html` localmente (`file://`) nem por `http://` simples.
 - Assume-se uma casa por utilizador (a primeira encontrada); não há UI para
   gerir pertencer a várias casas em simultâneo.
 - Sem edição de um item já criado além de quantidade e local — decisão
