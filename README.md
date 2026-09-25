@@ -72,10 +72,10 @@ ordem no SQL Editor do projeto Supabase, ou espera pela GitHub Action
   `www/` funciona sozinha sem isto.
 - `supabase/migrations/` — esquema da base de dados, por ordem.
 
-⚠️ **Ação necessária:** como os ficheiros da PWA se mudaram para `www/`, é
-preciso atualizar o GitHub Pages para servir a partir dessa pasta —
-**Settings → Pages → Build and deployment → Source: Deploy from a branch →
-Branch: `main` / `/www`** (em vez de `/ (root)`).
+O GitHub Pages continua a servir a raiz do repositório; um `index.html`
+na raiz redireciona para `www/` (mantendo query e hash, para não partir os
+links de login do Supabase). A app fica em
+`https://joaovizoso.github.io/inventory-app/www/`.
 
 ## App nativa iOS (Capacitor + leitor de código de barras nativo)
 
